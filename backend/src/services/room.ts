@@ -47,3 +47,27 @@ export async function createRoom(input: CreateRoomInput): Promise<CreateRoomResu
 
   return { roomId, code };
 }
+
+export interface RoomInfo {
+  roomId: string;
+  name: string;
+  status: string;
+  voteThreshold: number;
+  maxSuggestions: number;
+}
+
+export async function getRoomByCode(code: string): Promise<RoomInfo> {
+  const roomId = await redis.get(`code:${code}`);
+  if (!roomId) throw new AppError('ROOM_NOT_FOUND', 404);
+
+  const room = await redis.hgetall(`room:${roomId}`);
+  if (!room.name) throw new AppError('ROOM_NOT_FOUND', 404);
+
+  return {
+    roomId,
+    name: room.name,
+    status: room.status,
+    voteThreshold: Number(room.voteThreshold),
+    maxSuggestions: Number(room.maxSuggestions),
+  };
+}

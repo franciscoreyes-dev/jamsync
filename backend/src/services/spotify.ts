@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { AppError } from '../errors';
+import { redis } from './redis';
 
 const SPOTIFY_API = 'https://api.spotify.com/v1';
 const SPOTIFY_ACCOUNTS = 'https://accounts.spotify.com';
@@ -66,4 +67,57 @@ export async function refreshHostToken(
     },
   });
   return { accessToken: data.access_token, expiresIn: data.expires_in };
+}
+
+export async function getAppToken(): Promise<string> {
+  const cached = await redis.get('spotify:app_token');
+  if (cached) return cached;
+
+  const body = new URLSearchParams({ grant_type: 'client_credentials' });
+  const { data } = await axios.post(`${SPOTIFY_ACCOUNTS}/api/token`, body.toString(), {
+    headers: {
+      Authorization: `Basic ${basicAuth()}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  });
+
+  await redis.set('spotify:app_token', data.access_token, 'EX', data.expires_in);
+  return data.access_token as string;
+}
+
+export interface SpotifyTrack {
+  id: string;
+  name: string;
+  artists: string[];
+  album: string;
+  albumArt: string;
+  uri: string;
+  durationMs: number;
+}
+
+interface RawTrackItem {
+  id: string;
+  name: string;
+  artists: Array<{ name: string }>;
+  album: { name: string; images: Array<{ url: string }> };
+  uri: string;
+  duration_ms: number;
+}
+
+export async function searchTracks(q: string, limit = 10): Promise<SpotifyTrack[]> {
+  const token = await getAppToken();
+  const params = new URLSearchParams({ q, type: 'track', limit: String(limit) });
+  const { data } = await axios.get(`${SPOTIFY_API}/search?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  return (data.tracks.items as RawTrackItem[]).map((item) => ({
+    id: item.id,
+    name: item.name,
+    artists: item.artists.map((a) => a.name),
+    album: item.album.name,
+    albumArt: item.album.images[0]?.url ?? '',
+    uri: item.uri,
+    durationMs: item.duration_ms,
+  }));
 }

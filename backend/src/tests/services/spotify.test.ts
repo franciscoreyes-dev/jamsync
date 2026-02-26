@@ -1,18 +1,33 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
 import { AppError } from '../../errors';
 
 vi.mock('axios');
 const mockedAxios = vi.mocked(axios, true);
 
+vi.mock('../../services/redis', () => ({
+  redis: {
+    get: vi.fn(),
+    set: vi.fn(),
+  },
+}));
+
 // Provide env vars used inside the service
 process.env.SPOTIFY_CLIENT_ID = 'test-client-id';
 process.env.SPOTIFY_CLIENT_SECRET = 'test-client-secret';
 process.env.SPOTIFY_REDIRECT_URI = 'http://localhost:3000/auth/callback';
 
-import { exchangeCode, getMe, refreshHostToken } from '../../services/spotify';
+import { exchangeCode, getMe, refreshHostToken, getAppToken, searchTracks } from '../../services/spotify';
+import * as redisModule from '../../services/redis';
+
+const redisMock = redisModule.redis as unknown as {
+  get: ReturnType<typeof vi.fn>;
+  set: ReturnType<typeof vi.fn>;
+};
 
 describe('exchangeCode', () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it('returns tokens on successful exchange', async () => {
     mockedAxios.post.mockResolvedValue({
       data: { access_token: 'at', refresh_token: 'rt', expires_in: 3600 },
@@ -29,6 +44,8 @@ describe('exchangeCode', () => {
 });
 
 describe('getMe', () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it('returns the user object', async () => {
     mockedAxios.get.mockResolvedValue({
       data: { id: 'u1', display_name: 'Host', product: 'premium' },
@@ -40,6 +57,8 @@ describe('getMe', () => {
 });
 
 describe('refreshHostToken', () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it('returns a new access token', async () => {
     mockedAxios.post.mockResolvedValue({
       data: { access_token: 'new-at', expires_in: 3600 },
@@ -47,5 +66,68 @@ describe('refreshHostToken', () => {
     const result = await refreshHostToken('refresh-token');
     expect(result.accessToken).toBe('new-at');
     expect(result.expiresIn).toBe(3600);
+  });
+});
+
+describe('getAppToken', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns cached token when spotify:app_token exists in Redis', async () => {
+    redisMock.get.mockResolvedValue('cached-token');
+
+    const token = await getAppToken();
+
+    expect(token).toBe('cached-token');
+    expect(mockedAxios.post).not.toHaveBeenCalled();
+  });
+
+  it('fetches a new token when cache is empty and stores it with expires_in TTL', async () => {
+    redisMock.get.mockResolvedValue(null);
+    mockedAxios.post.mockResolvedValue({
+      data: { access_token: 'new-app-token', expires_in: 3600 },
+    });
+    redisMock.set.mockResolvedValue('OK');
+
+    const token = await getAppToken();
+
+    expect(token).toBe('new-app-token');
+    expect(redisMock.set).toHaveBeenCalledWith('spotify:app_token', 'new-app-token', 'EX', 3600);
+  });
+});
+
+describe('searchTracks', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns formatted tracks using the app token', async () => {
+    redisMock.get.mockResolvedValue('app-token');
+    mockedAxios.get.mockResolvedValue({
+      data: {
+        tracks: {
+          items: [
+            {
+              id: 'track-1',
+              name: 'Blinding Lights',
+              artists: [{ name: 'The Weeknd' }],
+              album: { name: 'After Hours', images: [{ url: 'https://image.jpg' }] },
+              uri: 'spotify:track:track-1',
+              duration_ms: 200000,
+            },
+          ],
+        },
+      },
+    });
+
+    const tracks = await searchTracks('blinding lights', 5);
+
+    expect(tracks).toHaveLength(1);
+    expect(tracks[0]).toEqual({
+      id: 'track-1',
+      name: 'Blinding Lights',
+      artists: ['The Weeknd'],
+      album: 'After Hours',
+      albumArt: 'https://image.jpg',
+      uri: 'spotify:track:track-1',
+      durationMs: 200000,
+    });
   });
 });

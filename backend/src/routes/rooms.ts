@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { requireJwt } from '../lib/require-jwt';
-import { createRoom } from '../services/room';
+import { createRoom, getRoomByCode } from '../services/room';
 
 export const roomsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -32,4 +32,8 @@ export const roomsRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.code(201).send(result);
     }
   );
+
+  fastify.get<{ Params: { code: string } }>('/:code', async (request) => {
+    return getRoomByCode(request.params.code);
+  });
 };

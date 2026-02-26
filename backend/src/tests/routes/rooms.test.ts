@@ -6,6 +6,7 @@ import { signJwt } from '../../lib/jwt';
 
 vi.mock('../../services/room', () => ({
   createRoom: vi.fn(),
+  getRoomByCode: vi.fn(),
 }));
 
 import * as roomService from '../../services/room';
@@ -92,5 +93,43 @@ describe('POST /rooms', () => {
       voteThreshold: 5,
       maxSuggestions: 2,
     });
+  });
+});
+
+describe('GET /rooms/:code', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 200 with room info for a valid code', async () => {
+    vi.mocked(roomService.getRoomByCode).mockResolvedValue({
+      roomId: 'room-1',
+      name: 'Friday Jams',
+      status: 'active',
+      voteThreshold: 3,
+      maxSuggestions: 5,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/rooms/JAM-ABCD' });
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toEqual({
+      roomId: 'room-1',
+      name: 'Friday Jams',
+      status: 'active',
+      voteThreshold: 3,
+      maxSuggestions: 5,
+    });
+  });
+
+  it('returns 404 when code is not found', async () => {
+    vi.mocked(roomService.getRoomByCode).mockRejectedValue(new AppError('ROOM_NOT_FOUND', 404));
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/rooms/JAM-XXXX' });
+
+    expect(res.statusCode).toBe(404);
+    expect(JSON.parse(res.body).code).toBe('ROOM_NOT_FOUND');
   });
 });
