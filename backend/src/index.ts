@@ -2,6 +2,7 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import { corsPlugin } from './plugins/cors';
 import { authRoutes } from './routes/auth';
+import { roomsRoutes } from './routes/rooms';
 import { AppError } from './errors';
 
 const fastify = Fastify({ logger: true });
@@ -17,6 +18,7 @@ fastify.setErrorHandler((error, _request, reply) => {
 async function start() {
   await fastify.register(corsPlugin);
   await fastify.register(authRoutes, { prefix: '/auth' });
+  await fastify.register(roomsRoutes, { prefix: '/rooms' });
 
   const port = Number(process.env.PORT ?? 3000);
   await fastify.listen({ port, host: '0.0.0.0' });

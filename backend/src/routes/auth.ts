@@ -1,28 +1,17 @@
-import { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyPluginAsync } from 'fastify';
 import { randomUUID } from 'crypto';
 import { exchangeCode, getMe, refreshHostToken } from '../services/spotify';
 import { saveHostSession, deleteHostSession, redis } from '../services/redis';
 import { AppError } from '../errors';
-import { signJwt, verifyJwt } from '../lib/jwt';
+import { signJwt } from '../lib/jwt';
+import { requireJwt } from '../lib/require-jwt';
 
 const SCOPES = [
+  'user-read-private',
   'user-read-playback-state',
   'user-modify-playback-state',
   'user-read-currently-playing',
 ].join(' ');
-
-async function requireJwt(request: FastifyRequest, reply: FastifyReply) {
-  const auth = request.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) {
-    return reply.code(401).send({ code: 'INVALID_TOKEN' });
-  }
-  try {
-    const payload = verifyJwt(auth.slice(7));
-    request.user = payload;
-  } catch {
-    return reply.code(401).send({ code: 'INVALID_TOKEN' });
-  }
-}
 
 export const authRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get('/spotify', async (_request, reply) => {
