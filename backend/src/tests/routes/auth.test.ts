@@ -24,6 +24,10 @@ process.env.SPOTIFY_REDIRECT_URI = 'http://localhost:3000/auth/callback';
 process.env.JWT_SECRET = 'test-secret';
 process.env.FRONTEND_URL = 'http://localhost:5173';
 
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 async function buildApp() {
   const app = Fastify();
   await app.register(authRoutes, { prefix: '/auth' });
@@ -59,6 +63,10 @@ describe('GET /auth/callback', () => {
 
     expect(res.statusCode).toBe(302);
     expect(res.headers.location).toContain('/host/new?token=');
+    expect(vi.mocked(redisService.saveHostSession)).toHaveBeenCalledWith(
+      expect.any(String),
+      { hostToken: 'at', hostRefreshToken: 'rt' }
+    );
   });
 
   it('redirects to error page when not premium', async () => {

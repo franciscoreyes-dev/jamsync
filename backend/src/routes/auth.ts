@@ -18,7 +18,7 @@ async function requireJwt(request: FastifyRequest, reply: FastifyReply) {
   }
   try {
     const payload = verifyJwt(auth.slice(7));
-    (request as FastifyRequest & { user: { hostId: string } }).user = payload;
+    request.user = payload;
   } catch {
     return reply.code(401).send({ code: 'INVALID_TOKEN' });
   }
@@ -85,7 +85,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
     '/logout',
     { preHandler: [requireJwt] },
     async (request, reply) => {
-      const { hostId } = (request as FastifyRequest & { user: { hostId: string } }).user;
+      const { hostId } = request.user;
       await deleteHostSession(hostId);
       return reply.code(204).send();
     }
