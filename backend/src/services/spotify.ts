@@ -37,7 +37,9 @@ export async function exchangeCode(code: string): Promise<SpotifyTokens> {
       },
     });
     return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresIn: data.expires_in };
-  } catch {
+  } catch (err: unknown) {
+    const axiosErr = err as { response?: { data?: unknown; status?: number } };
+    console.error('[exchangeCode] Spotify error:', axiosErr.response?.status, axiosErr.response?.data);
     throw new AppError('OAUTH_FAILED', 400);
   }
 }

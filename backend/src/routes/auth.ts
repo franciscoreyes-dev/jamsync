@@ -31,6 +31,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
       const frontendError = (reason: string) =>
         reply.redirect(`${process.env.FRONTEND_URL}/auth/error?reason=${reason}`);
 
+      request.log.info({ spotifyError: error ?? null, hasCode: !!code }, 'OAuth callback received');
       if (error || !code) return frontendError('OAUTH_FAILED');
 
       try {
@@ -48,6 +49,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         const jwtToken = signJwt({ hostId });
         return reply.redirect(`${process.env.FRONTEND_URL}/host/new?token=${jwtToken}`);
       } catch (err) {
+        request.log.error(err, 'OAuth callback error');
         if (err instanceof AppError && err.code === 'PREMIUM_REQUIRED') {
           return frontendError('PREMIUM_REQUIRED');
         }
