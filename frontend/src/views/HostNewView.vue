@@ -7,7 +7,8 @@ const route = useRoute();
 const router = useRouter();
 
 onMounted(async () => {
-  const token = route.query.token as string | undefined;
+  const raw = route.query.token;
+  const token = typeof raw === 'string' ? raw : undefined;
 
   if (!token) {
     router.replace({ name: 'auth-error', query: { reason: 'MISSING_TOKEN' } });
