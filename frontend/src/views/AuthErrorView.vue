@@ -1,7 +1,11 @@
 <script setup lang="ts">
-// Auth error page — reads ?reason= from route query
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+const reason = computed(() => (route.query.reason as string) ?? 'UNKNOWN_ERROR');
 </script>
 
 <template>
-  <div><!-- AuthErrorView --></div>
+  <div>{{ reason }}</div>
 </template>
