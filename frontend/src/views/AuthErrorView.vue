@@ -3,7 +3,10 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 
 const route = useRoute();
-const reason = computed(() => (route.query.reason as string) ?? 'UNKNOWN_ERROR');
+const reason = computed(() => {
+  const raw = route.query.reason;
+  return typeof raw === 'string' ? raw : 'UNKNOWN_ERROR';
+});
 </script>
 
 <template>
