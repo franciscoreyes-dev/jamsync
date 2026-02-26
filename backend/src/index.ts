@@ -22,4 +22,7 @@ async function start() {
   await fastify.listen({ port, host: '0.0.0.0' });
 }
 
-start();
+start().catch((err) => {
+  fastify.log.error(err);
+  process.exit(1);
+});

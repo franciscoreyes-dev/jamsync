@@ -69,7 +69,16 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
 
   fastify.post<{ Body: { roomId: string } }>(
     '/refresh',
-    { preHandler: [requireJwt] },
+    {
+      preHandler: [requireJwt],
+      schema: {
+        body: {
+          type: 'object',
+          required: ['roomId'],
+          properties: { roomId: { type: 'string', minLength: 1 } },
+        },
+      },
+    },
     async (request, reply) => {
       const { roomId } = request.body;
       const hostRefreshToken = await redis.hget(`room:${roomId}`, 'hostRefreshToken');
