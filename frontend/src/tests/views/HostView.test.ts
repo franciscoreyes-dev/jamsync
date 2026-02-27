@@ -85,6 +85,20 @@ describe('HostView', () => {
     expect(mockRemoveSuggestion).toHaveBeenCalledWith({ roomId: 'room-abc', trackId: 'track-1' });
   });
 
+  it('renders approved queue items with name and artist', async () => {
+    const queue = useQueueStore();
+    queue.updateQueue(['track-1']);
+    queue.setQueueMeta('track-1', TRACK_META);
+
+    const router = buildRouter();
+    await router.push('/host/room-abc');
+    const wrapper = mount(HostView, { global: { plugins: [router] } });
+
+    expect(wrapper.find('[data-testid="queue-item-track-1"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="queue-item-track-1"]').text()).toContain('Blinding Lights');
+    expect(wrapper.find('[data-testid="queue-item-track-1"]').text()).toContain('The Weeknd');
+  });
+
   it('threshold slider reflects current voteThreshold from roomStore', async () => {
     const router = buildRouter();
     await router.push('/host/room-abc');

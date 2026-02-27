@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { RoomStatePayload, SuggestionAddedPayload, SuggestionItem } from '@/types/socket';
+import type { RoomStatePayload, SuggestionAddedPayload, SuggestionItem, TrackMeta } from '@/types/socket';
 
 export interface SuggestionEntry {
   meta: SuggestionItem;
@@ -11,6 +11,7 @@ export interface SuggestionEntry {
 export const useQueueStore = defineStore('queue', () => {
   const queue = ref<string[]>([]);
   const suggestions = ref<Record<string, SuggestionEntry>>({});
+  const queueMetadata = ref<Record<string, TrackMeta>>({});
 
   function setFromRoomState(data: RoomStatePayload) {
     queue.value = data.queue;
@@ -40,5 +41,9 @@ export const useQueueStore = defineStore('queue', () => {
     queue.value = q;
   }
 
-  return { queue, suggestions, setFromRoomState, addSuggestion, updateVote, approveSuggestion, updateQueue };
+  function setQueueMeta(trackId: string, meta: TrackMeta) {
+    queueMetadata.value[trackId] = meta;
+  }
+
+  return { queue, suggestions, queueMetadata, setFromRoomState, addSuggestion, updateVote, approveSuggestion, updateQueue, setQueueMeta };
 });

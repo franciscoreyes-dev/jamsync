@@ -109,6 +109,20 @@ describe('GuestView', () => {
     expect(wrapper.find('[data-testid="vote-btn-track-1"]').attributes('disabled')).toBeDefined();
   });
 
+  it('renders approved queue items with name and artist', async () => {
+    const queue = useQueueStore();
+    queue.updateQueue(['track-1']);
+    queue.setQueueMeta('track-1', TRACK_META);
+
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    const wrapper = mount(GuestView, { global: { plugins: [router] } });
+
+    expect(wrapper.find('[data-testid="queue-item-track-1"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="queue-item-track-1"]').text()).toContain('Blinding Lights');
+    expect(wrapper.find('[data-testid="queue-item-track-1"]').text()).toContain('The Weeknd');
+  });
+
   it('calls vote when vote button is clicked', async () => {
     const queue = useQueueStore();
     queue.addSuggestion({ trackId: 'track-1', trackMeta: TRACK_META, voteCount: 0 });

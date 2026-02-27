@@ -49,6 +49,7 @@ export const useSocketStore = defineStore('socket', () => {
 
     s.on('track_approved', (data: TrackApprovedPayload) => {
       queue.approveSuggestion(data.trackId);
+      queue.setQueueMeta(data.trackId, data.trackMeta);
     });
 
     s.on('suggestion_removed', (data: { trackId: string }) => {

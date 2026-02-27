@@ -77,6 +77,18 @@ describe('useQueueStore', () => {
     expect(store.suggestions['track-1']).toBeUndefined();
   });
 
+  it('setQueueMeta stores metadata for an approved track', () => {
+    const store = useQueueStore();
+    store.setQueueMeta('track-1', TRACK_META);
+    expect(store.queueMetadata['track-1'].name).toBe('Blinding Lights');
+    expect(store.queueMetadata['track-1'].albumArt).toBe('https://example.com/art.jpg');
+  });
+
+  it('queueMetadata starts empty', () => {
+    const store = useQueueStore();
+    expect(store.queueMetadata).toEqual({});
+  });
+
   it('updateQueue replaces the queue array', () => {
     const store = useQueueStore();
     store.setFromRoomState(ROOM_STATE);

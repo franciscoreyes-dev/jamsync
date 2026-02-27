@@ -121,6 +121,14 @@ describe('track_approved event', () => {
     capturedHandlers['track_approved']({ trackId: 'track-1', trackMeta: TRACK_META });
     expect(queue.suggestions['track-1']).toBeUndefined();
   });
+
+  it('stores track metadata in queueMetadata', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    const queue = useQueueStore();
+    capturedHandlers['track_approved']({ trackId: 'track-1', trackMeta: TRACK_META });
+    expect(queue.queueMetadata['track-1']).toMatchObject({ name: 'Song', albumArt: '' });
+  });
 });
 
 describe('queue_updated event', () => {
