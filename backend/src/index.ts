@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import { authRoutes } from './routes/auth';
 import { roomsRoutes } from './routes/rooms';
 import { spotifyRoutes } from './routes/spotify';
+import { setupSocket } from './socket';
 import { AppError } from './errors';
 
 const fastify = Fastify({ logger: true });
@@ -28,6 +29,7 @@ async function start() {
   await fastify.register(authRoutes, { prefix: '/auth' });
   await fastify.register(roomsRoutes, { prefix: '/rooms' });
   await fastify.register(spotifyRoutes, { prefix: '/spotify' });
+  setupSocket(fastify);
 
   const port = Number(process.env.PORT ?? 3000);
   await fastify.listen({ port, host: '0.0.0.0' });

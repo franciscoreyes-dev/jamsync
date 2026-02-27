@@ -104,6 +104,14 @@ interface RawTrackItem {
   duration_ms: number;
 }
 
+export async function addToQueue(trackUri: string, hostToken: string): Promise<void> {
+  await axios.post(
+    `${SPOTIFY_API}/me/player/queue?uri=${encodeURIComponent(trackUri)}`,
+    null,
+    { headers: { Authorization: `Bearer ${hostToken}` } }
+  );
+}
+
 export async function searchTracks(q: string, limit = 10): Promise<SpotifyTrack[]> {
   const token = await getAppToken();
   const params = new URLSearchParams({ q, type: 'track', limit: String(limit) });
