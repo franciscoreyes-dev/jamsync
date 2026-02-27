@@ -11,9 +11,11 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.2.1",
     "axios": "^1.6.7",
     "pinia": "^2.1.7",
     "socket.io-client": "^4.8.3",
+    "tailwindcss": "^4.2.1",
     "vue": "^3.4.15",
     "vue-router": "^4.3.0"
   },
