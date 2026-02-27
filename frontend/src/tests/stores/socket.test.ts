@@ -163,6 +163,31 @@ describe('emit helpers', () => {
     store.voteTrack({ trackId: 'track-1' });
     expect(mockSocket.emit).toHaveBeenCalledWith('vote_track', { trackId: 'track-1' });
   });
+
+  it('removeSuggestion emits remove_suggestion with payload', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    store.removeSuggestion({ roomId: 'room-1', trackId: 'track-1' });
+    expect(mockSocket.emit).toHaveBeenCalledWith('remove_suggestion', { roomId: 'room-1', trackId: 'track-1' });
+  });
+
+  it('updateThreshold emits update_threshold with payload', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    store.updateThreshold({ roomId: 'room-1', threshold: 5 });
+    expect(mockSocket.emit).toHaveBeenCalledWith('update_threshold', { roomId: 'room-1', threshold: 5 });
+  });
+});
+
+describe('suggestion_removed event', () => {
+  it('removes the suggestion from queue store', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    const queue = useQueueStore();
+    queue.addSuggestion({ trackId: 'track-1', trackMeta: TRACK_META, voteCount: 1 });
+    capturedHandlers['suggestion_removed']({ trackId: 'track-1' });
+    expect(queue.suggestions['track-1']).toBeUndefined();
+  });
 });
 
 describe('disconnect', () => {

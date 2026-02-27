@@ -51,6 +51,10 @@ export const useSocketStore = defineStore('socket', () => {
       queue.approveSuggestion(data.trackId);
     });
 
+    s.on('suggestion_removed', (data: { trackId: string }) => {
+      queue.approveSuggestion(data.trackId);
+    });
+
     s.on('queue_updated', (data: QueueUpdatedPayload) => {
       queue.updateQueue(data.queue);
     });
@@ -84,5 +88,13 @@ export const useSocketStore = defineStore('socket', () => {
     socket.value?.emit('vote_track', payload);
   }
 
-  return { socket, connected, error, connect, disconnect, suggestTrack, voteTrack };
+  function removeSuggestion(payload: { roomId: string; trackId: string }) {
+    socket.value?.emit('remove_suggestion', payload);
+  }
+
+  function updateThreshold(payload: { roomId: string; threshold: number }) {
+    socket.value?.emit('update_threshold', payload);
+  }
+
+  return { socket, connected, error, connect, disconnect, suggestTrack, voteTrack, removeSuggestion, updateThreshold };
 });
