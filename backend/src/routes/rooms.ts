@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { requireJwt } from '../lib/require-jwt';
-import { createRoom, getRoomByCode } from '../services/room';
+import { createRoom, getRoomByCode, updateRoom } from '../services/room';
 
 export const roomsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -30,6 +30,32 @@ export const roomsRoutes: FastifyPluginAsync = async (fastify) => {
 
       const result = await createRoom({ hostId, name, voteThreshold, maxSuggestions });
       return reply.code(201).send(result);
+    }
+  );
+
+  fastify.patch<{
+    Params: { id: string };
+    Body: { voteThreshold?: number; maxSuggestions?: number };
+  }>(
+    '/:id',
+    {
+      preHandler: [requireJwt],
+      schema: {
+        body: {
+          type: 'object',
+          properties: {
+            voteThreshold: { type: 'number', minimum: 1, maximum: 10 },
+            maxSuggestions: { type: 'number', minimum: 1, maximum: 10 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const { hostId } = request.user;
+      const { id: roomId } = request.params;
+      const { voteThreshold, maxSuggestions } = request.body;
+      const result = await updateRoom({ roomId, hostId, voteThreshold, maxSuggestions });
+      return reply.code(200).send(result);
     }
   );
 

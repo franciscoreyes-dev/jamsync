@@ -56,6 +56,40 @@ export interface RoomInfo {
   maxSuggestions: number;
 }
 
+export interface UpdateRoomInput {
+  roomId: string;
+  hostId: string;
+  voteThreshold?: number;
+  maxSuggestions?: number;
+}
+
+export interface UpdateRoomResult {
+  roomId: string;
+  voteThreshold: number;
+  maxSuggestions: number;
+}
+
+export async function updateRoom(input: UpdateRoomInput): Promise<UpdateRoomResult> {
+  const { roomId, hostId, voteThreshold, maxSuggestions } = input;
+
+  const room = await redis.hgetall(`room:${roomId}`);
+  if (!room?.hostId) throw new AppError('ROOM_NOT_FOUND', 404);
+  if (room.hostId !== hostId) throw new AppError('UNAUTHORIZED', 403);
+
+  if (voteThreshold !== undefined) {
+    await redis.hset(`room:${roomId}`, 'voteThreshold', String(voteThreshold));
+  }
+  if (maxSuggestions !== undefined) {
+    await redis.hset(`room:${roomId}`, 'maxSuggestions', String(maxSuggestions));
+  }
+
+  return {
+    roomId,
+    voteThreshold: voteThreshold ?? Number(room.voteThreshold),
+    maxSuggestions: maxSuggestions ?? Number(room.maxSuggestions),
+  };
+}
+
 export async function getRoomByCode(code: string): Promise<RoomInfo> {
   const roomId = await redis.get(`code:${code}`);
   if (!roomId) throw new AppError('ROOM_NOT_FOUND', 404);

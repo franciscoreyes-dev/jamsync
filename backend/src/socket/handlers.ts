@@ -138,6 +138,69 @@ export function registerHandlers(io: Server, socket: Socket): void {
     }
   });
 
+  socket.on('remove_suggestion', async ({ trackId }: { trackId: string }) => {
+    try {
+      const hostId = await redis.hget(`room:${roomId}`, 'hostId');
+      if (hostId !== userId) {
+        socket.emit('error', { code: 'UNAUTHORIZED' });
+        return;
+      }
+      await redis.hdel(`suggestions:${roomId}`, trackId);
+      io.to(roomId).emit('suggestion_removed', { trackId });
+    } catch {
+      socket.emit('error', { code: 'INTERNAL_ERROR' });
+    }
+  });
+
+  socket.on('update_threshold', async ({ threshold }: { threshold: number }) => {
+    try {
+      const hostId = await redis.hget(`room:${roomId}`, 'hostId');
+      if (hostId !== userId) {
+        socket.emit('error', { code: 'UNAUTHORIZED' });
+        return;
+      }
+      await redis.hset(`room:${roomId}`, 'voteThreshold', threshold);
+      io.to(roomId).emit('room_updated', { voteThreshold: threshold });
+    } catch {
+      socket.emit('error', { code: 'INTERNAL_ERROR' });
+    }
+  });
+
+  socket.on('leave_room', async () => {
+    try {
+      await redis.srem(`users:${roomId}`, userId);
+      const participantCount = await redis.scard(`users:${roomId}`);
+      io.to(roomId).emit('user_left', { userId, participantCount });
+    } catch {
+      // ignore — cleanup best-effort
+    }
+  });
+
+  socket.on('mute_user', async ({ userId: targetUserId }: { userId: string }) => {
+    try {
+      const hostId = await redis.hget(`room:${roomId}`, 'hostId');
+      if (hostId !== userId) {
+        socket.emit('error', { code: 'UNAUTHORIZED' });
+        return;
+      }
+      await redis.sadd(`muted:${roomId}`, targetUserId);
+      const allSuggestions = await redis.hgetall(`suggestions:${roomId}`);
+      const toRemove = Object.entries(allSuggestions ?? {})
+        .filter(([, json]) => {
+          const meta = JSON.parse(json) as { suggestedBy?: string };
+          return meta.suggestedBy === targetUserId;
+        })
+        .map(([trackId]) => trackId)
+        .sort();
+      if (toRemove.length > 0) {
+        await redis.hdel(`suggestions:${roomId}`, ...toRemove);
+      }
+      io.to(roomId).emit('user_muted', { userId: targetUserId, removedTrackIds: toRemove });
+    } catch {
+      socket.emit('error', { code: 'INTERNAL_ERROR' });
+    }
+  });
+
   socket.on('disconnect', async () => {
     try {
       await redis.srem(`users:${roomId}`, userId);

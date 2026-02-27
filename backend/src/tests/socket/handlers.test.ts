@@ -180,6 +180,106 @@ describe('vote_track', () => {
   });
 });
 
+describe('remove_suggestion', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('emits UNAUTHORIZED when caller is not the host', async () => {
+    const socket = makeSocket('room-1', 'user-NOT-host');
+    const { io } = makeIo();
+    r.hget.mockResolvedValueOnce('user-host'); // hostId
+    registerHandlers(io, socket);
+    await socket._captured['remove_suggestion']({ trackId: 'track-1' });
+    expect(socket._emit).toHaveBeenCalledWith('error', { code: 'UNAUTHORIZED' });
+    expect(r.hdel).not.toHaveBeenCalled();
+  });
+
+  it('deletes suggestion from Redis and broadcasts suggestion_removed', async () => {
+    const socket = makeSocket('room-1', 'user-host');
+    const { io, ioEmit } = makeIo();
+    r.hget.mockResolvedValueOnce('user-host'); // hostId
+    r.hdel.mockResolvedValue(1);
+    registerHandlers(io, socket);
+    await socket._captured['remove_suggestion']({ trackId: 'track-1' });
+    expect(r.hdel).toHaveBeenCalledWith('suggestions:room-1', 'track-1');
+    expect(ioEmit).toHaveBeenCalledWith('suggestion_removed', { trackId: 'track-1' });
+  });
+});
+
+describe('update_threshold', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('emits UNAUTHORIZED when caller is not the host', async () => {
+    const socket = makeSocket('room-1', 'user-NOT-host');
+    const { io } = makeIo();
+    r.hget.mockResolvedValueOnce('user-host'); // hostId
+    registerHandlers(io, socket);
+    await socket._captured['update_threshold']({ threshold: 5 });
+    expect(socket._emit).toHaveBeenCalledWith('error', { code: 'UNAUTHORIZED' });
+    expect(r.hset).not.toHaveBeenCalled();
+  });
+
+  it('updates voteThreshold in Redis and broadcasts room_updated', async () => {
+    const socket = makeSocket('room-1', 'user-host');
+    const { io, ioEmit } = makeIo();
+    r.hget.mockResolvedValueOnce('user-host'); // hostId
+    r.hset.mockResolvedValue(1);
+    registerHandlers(io, socket);
+    await socket._captured['update_threshold']({ threshold: 5 });
+    expect(r.hset).toHaveBeenCalledWith('room:room-1', 'voteThreshold', 5);
+    expect(ioEmit).toHaveBeenCalledWith('room_updated', { voteThreshold: 5 });
+  });
+});
+
+describe('leave_room', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('removes user from users SET and broadcasts user_left', async () => {
+    const socket = makeSocket();
+    const { io, ioEmit } = makeIo();
+    r.srem.mockResolvedValue(1);
+    r.scard.mockResolvedValue(3);
+    registerHandlers(io, socket);
+    await socket._captured['leave_room']();
+    expect(r.srem).toHaveBeenCalledWith('users:room-1', 'user-1');
+    expect(ioEmit).toHaveBeenCalledWith('user_left', { userId: 'user-1', participantCount: 3 });
+  });
+});
+
+describe('mute_user', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('emits UNAUTHORIZED when caller is not the host', async () => {
+    const socket = makeSocket('room-1', 'user-NOT-host');
+    const { io } = makeIo();
+    r.hget.mockResolvedValueOnce('user-host'); // hostId
+    registerHandlers(io, socket);
+    await socket._captured['mute_user']({ userId: 'target-user' });
+    expect(socket._emit).toHaveBeenCalledWith('error', { code: 'UNAUTHORIZED' });
+    expect(r.sadd).not.toHaveBeenCalled();
+  });
+
+  it('adds user to muted set, removes their suggestions, broadcasts user_muted', async () => {
+    const socket = makeSocket('room-1', 'user-host');
+    const { io, ioEmit } = makeIo();
+    r.hget.mockResolvedValueOnce('user-host'); // hostId
+    r.sadd.mockResolvedValue(1);
+    r.hgetall.mockResolvedValue({
+      'track-1': JSON.stringify({ suggestedBy: 'target-user', name: 'Song A' }),
+      'track-2': JSON.stringify({ suggestedBy: 'user-other', name: 'Song B' }),
+      'track-3': JSON.stringify({ suggestedBy: 'target-user', name: 'Song C' }),
+    });
+    r.hdel.mockResolvedValue(2);
+    registerHandlers(io, socket);
+    await socket._captured['mute_user']({ userId: 'target-user' });
+    expect(r.sadd).toHaveBeenCalledWith('muted:room-1', 'target-user');
+    expect(r.hdel).toHaveBeenCalledWith('suggestions:room-1', 'track-1', 'track-3');
+    expect(ioEmit).toHaveBeenCalledWith('user_muted', {
+      userId: 'target-user',
+      removedTrackIds: expect.arrayContaining(['track-1', 'track-3']),
+    });
+  });
+});
+
 describe('disconnect', () => {
   beforeEach(() => vi.clearAllMocks());
 

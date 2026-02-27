@@ -13,7 +13,7 @@ vi.mock('../../services/redis', () => ({
   },
 }));
 
-import { createRoom, getRoomByCode } from '../../services/room';
+import { createRoom, getRoomByCode, updateRoom } from '../../services/room';
 import * as redisModule from '../../services/redis';
 
 const redisMock = redisModule.redis as unknown as {
@@ -96,6 +96,42 @@ describe('createRoom', () => {
     await createRoom({ hostId: 'h1', name: 'Test Room', voteThreshold: 3, maxSuggestions: 3 });
 
     expect(vi.mocked(redisModule.deleteHostSession)).toHaveBeenCalledWith('h1');
+  });
+});
+
+describe('updateRoom', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('throws ROOM_NOT_FOUND when roomId does not exist', async () => {
+    redisMock.hgetall.mockResolvedValue(null);
+    await expect(
+      updateRoom({ roomId: 'bad-id', hostId: 'h1', voteThreshold: 5 })
+    ).rejects.toMatchObject({ code: 'ROOM_NOT_FOUND', statusCode: 404 });
+  });
+
+  it('throws UNAUTHORIZED when hostId does not match', async () => {
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', voteThreshold: '3', maxSuggestions: '3' });
+    await expect(
+      updateRoom({ roomId: 'room-1', hostId: 'h2', voteThreshold: 5 })
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED', statusCode: 403 });
+  });
+
+  it('updates voteThreshold in Redis and returns updated values', async () => {
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', voteThreshold: '3', maxSuggestions: '3' });
+    redisMock.hset.mockResolvedValue(1);
+    const result = await updateRoom({ roomId: 'room-1', hostId: 'h1', voteThreshold: 5 });
+    expect(redisMock.hset).toHaveBeenCalledWith('room:room-1', 'voteThreshold', '5');
+    expect(result).toEqual({ roomId: 'room-1', voteThreshold: 5, maxSuggestions: 3 });
+  });
+
+  it('updates maxSuggestions in Redis and returns updated values', async () => {
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', voteThreshold: '3', maxSuggestions: '3' });
+    redisMock.hset.mockResolvedValue(1);
+    const result = await updateRoom({ roomId: 'room-1', hostId: 'h1', maxSuggestions: 2 });
+    expect(redisMock.hset).toHaveBeenCalledWith('room:room-1', 'maxSuggestions', '2');
+    expect(result).toEqual({ roomId: 'room-1', voteThreshold: 3, maxSuggestions: 2 });
   });
 });
 

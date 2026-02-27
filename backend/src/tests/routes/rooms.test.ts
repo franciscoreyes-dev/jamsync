@@ -7,6 +7,7 @@ import { signJwt } from '../../lib/jwt';
 vi.mock('../../services/room', () => ({
   createRoom: vi.fn(),
   getRoomByCode: vi.fn(),
+  updateRoom: vi.fn(),
 }));
 
 import * as roomService from '../../services/room';
@@ -93,6 +94,66 @@ describe('POST /rooms', () => {
       voteThreshold: 5,
       maxSuggestions: 2,
     });
+  });
+});
+
+describe('PATCH /rooms/:id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 401 without a JWT', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'PATCH', url: '/rooms/room-1', payload: {} });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 200 with updated values on success', async () => {
+    vi.mocked(roomService.updateRoom).mockResolvedValue({ roomId: 'room-1', voteThreshold: 5, maxSuggestions: 3 });
+    const token = signJwt({ hostId: 'h1' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/rooms/room-1',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      payload: { voteThreshold: 5 },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(vi.mocked(roomService.updateRoom)).toHaveBeenCalledWith({ roomId: 'room-1', hostId: 'h1', voteThreshold: 5 });
+    expect(JSON.parse(res.body)).toEqual({ roomId: 'room-1', voteThreshold: 5, maxSuggestions: 3 });
+  });
+
+  it('returns 403 when UNAUTHORIZED is thrown', async () => {
+    vi.mocked(roomService.updateRoom).mockRejectedValue(new AppError('UNAUTHORIZED', 403));
+    const token = signJwt({ hostId: 'h2' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/rooms/room-1',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      payload: { maxSuggestions: 2 },
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(JSON.parse(res.body).code).toBe('UNAUTHORIZED');
+  });
+
+  it('returns 404 when ROOM_NOT_FOUND is thrown', async () => {
+    vi.mocked(roomService.updateRoom).mockRejectedValue(new AppError('ROOM_NOT_FOUND', 404));
+    const token = signJwt({ hostId: 'h1' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/rooms/bad-id',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      payload: { voteThreshold: 3 },
+    });
+
+    expect(res.statusCode).toBe(404);
   });
 });
 
