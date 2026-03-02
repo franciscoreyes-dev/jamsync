@@ -16,6 +16,9 @@ import type {
   VoteTrackPayload,
   LeaveRoomPayload,
   MuteUserPayload,
+  UnmuteUserPayload,
+  UserMutedPayload,
+  UserUnmutedPayload,
 } from '@/types/socket';
 
 export const useSocketStore = defineStore('socket', () => {
@@ -96,6 +99,14 @@ export const useSocketStore = defineStore('socket', () => {
       room.setParticipantCount(data.participantCount);
     });
 
+    s.on('user_muted', (data: UserMutedPayload) => {
+      queue.muteSuggestions(data.trackIds);
+    });
+
+    s.on('user_unmuted', (data: UserUnmutedPayload) => {
+      queue.unmuteSuggestions(data.trackIds);
+    });
+
     s.on('room_updated', (data: { voteThreshold?: number }) => {
       if (data.voteThreshold !== undefined) room.setVoteThreshold(data.voteThreshold);
     });
@@ -116,6 +127,11 @@ export const useSocketStore = defineStore('socket', () => {
     socket.value?.disconnect();
     socket.value = null;
     connected.value = false;
+    roomClosed.value = false;
+    error.value = null;
+    _lastRoomCode = '';
+    _lastUserId = '';
+    _reconnectAttempts = 0;
   }
 
   function suggestTrack(payload: SuggestTrackPayload) {
@@ -142,5 +158,9 @@ export const useSocketStore = defineStore('socket', () => {
     socket.value?.emit('mute_user', payload);
   }
 
-  return { socket, connected, error, roomClosed, connect, disconnect, suggestTrack, voteTrack, removeSuggestion, updateThreshold, leaveRoom, muteUser };
+  function unmuteUser(payload: UnmuteUserPayload) {
+    socket.value?.emit('unmute_user', payload);
+  }
+
+  return { socket, connected, error, roomClosed, connect, disconnect, suggestTrack, voteTrack, removeSuggestion, updateThreshold, leaveRoom, muteUser, unmuteUser };
 });

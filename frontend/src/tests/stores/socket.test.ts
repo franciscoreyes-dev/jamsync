@@ -259,6 +259,57 @@ describe('leaveRoom', () => {
   });
 });
 
+describe('disconnect', () => {
+  it('resets connected, roomClosed and error so connect can be called again', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    capturedHandlers['room_closed']?.();
+    expect(store.roomClosed).toBe(true);
+
+    store.disconnect();
+
+    expect(store.roomClosed).toBe(false);
+    expect(store.error).toBeNull();
+    expect(store.connected).toBe(false);
+  });
+
+  it('allows connect() to be called again after disconnect', () => {
+    const store = useSocketStore();
+    store.connect('JAM-OLD', 'user-1');
+    store.disconnect();
+
+    vi.mocked(io).mockClear();
+    store.connect('JAM-NEW', 'user-1');
+
+    expect(io).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ auth: { roomCode: 'JAM-NEW', userId: 'user-1' } })
+    );
+  });
+});
+
+describe('user_muted event', () => {
+  it('calls queue.muteSuggestions with the track IDs', () => {
+    const store = useSocketStore();
+    const queue = useQueueStore();
+    store.connect('JAM-1234', 'user-1');
+    const muteStub = vi.spyOn(queue, 'muteSuggestions').mockImplementation(() => {});
+    capturedHandlers['user_muted']({ userId: 'user-a', trackIds: ['t1', 't2'] });
+    expect(muteStub).toHaveBeenCalledWith(['t1', 't2']);
+  });
+});
+
+describe('user_unmuted event', () => {
+  it('calls queue.unmuteSuggestions with the track IDs', () => {
+    const store = useSocketStore();
+    const queue = useQueueStore();
+    store.connect('JAM-1234', 'user-1');
+    const unmuteStub = vi.spyOn(queue, 'unmuteSuggestions').mockImplementation(() => {});
+    capturedHandlers['user_unmuted']({ userId: 'user-a', trackIds: ['t1'] });
+    expect(unmuteStub).toHaveBeenCalledWith(['t1']);
+  });
+});
+
 describe('toast integration', () => {
   it('track_approved fires a success toast', () => {
     const store = useSocketStore();
