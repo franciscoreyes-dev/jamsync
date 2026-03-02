@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { useSocketStore } from '@/stores/socket';
 import { useQueueStore } from '@/stores/queue';
 import { useRoomStore } from '@/stores/room';
+import { useUserStore } from '@/stores/user';
 import { useSpotifySearch } from '@/composables/useSpotifySearch';
 import { useVoting } from '@/composables/useVoting';
 import type { TrackMeta } from '@/types/socket';
@@ -12,11 +14,19 @@ import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
 import Badge from '@/components/ui/Badge.vue';
 
+const route = useRoute();
 const socket = useSocketStore();
 const queue = useQueueStore();
 const room = useRoomStore();
+const user = useUserStore();
 const { query, results } = useSpotifySearch();
 const { vote } = useVoting();
+
+const code = route.params.code as string;
+
+onMounted(() => {
+  socket.connect(code, user.userId);
+});
 
 const suggestions = computed(() => Object.entries(queue.suggestions));
 const approvedQueue = computed(() =>

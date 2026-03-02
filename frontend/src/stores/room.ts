@@ -25,5 +25,9 @@ export const useRoomStore = defineStore('room', () => {
     participantCount.value = n;
   }
 
-  return { roomId, code, name, status, voteThreshold, maxSuggestions, participantCount, setRoomState, setParticipantCount };
+  function setVoteThreshold(n: number) {
+    voteThreshold.value = n;
+  }
+
+  return { roomId, code, name, status, voteThreshold, maxSuggestions, participantCount, setRoomState, setParticipantCount, setVoteThreshold };
 });

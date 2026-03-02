@@ -45,4 +45,10 @@ describe('useRoomStore', () => {
     store.setParticipantCount(12);
     expect(store.participantCount).toBe(12);
   });
+
+  it('setVoteThreshold updates voteThreshold', () => {
+    const store = useRoomStore();
+    store.setVoteThreshold(7);
+    expect(store.voteThreshold).toBe(7);
+  });
 });

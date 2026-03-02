@@ -27,6 +27,8 @@ export const useSocketStore = defineStore('socket', () => {
   const RECONNECT_DELAY_MS = 2000;
 
   function connect(roomCode: string, userId: string) {
+    if (connected.value) return;
+
     _lastRoomCode = roomCode;
     _lastUserId = userId;
     _reconnectAttempts = 0;
@@ -86,6 +88,10 @@ export const useSocketStore = defineStore('socket', () => {
 
     s.on('user_left', (data: UserLeftPayload) => {
       room.setParticipantCount(data.participantCount);
+    });
+
+    s.on('room_updated', (data: { voteThreshold?: number }) => {
+      if (data.voteThreshold !== undefined) room.setVoteThreshold(data.voteThreshold);
     });
 
     s.on('error', (data: { code: string }) => {

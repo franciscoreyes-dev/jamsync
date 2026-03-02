@@ -187,6 +187,26 @@ describe('emit helpers', () => {
   });
 });
 
+describe('room_updated event', () => {
+  it('updates voteThreshold in room store', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    capturedHandlers['room_updated']({ voteThreshold: 5 });
+    expect(useRoomStore().voteThreshold).toBe(5);
+  });
+});
+
+describe('connect guard', () => {
+  it('does not create a new socket if already connected', () => {
+    const store = useSocketStore();
+    vi.mocked(io).mockClear();
+    store.connect('JAM-1234', 'user-1');
+    capturedHandlers['connect'](); // mark as connected
+    store.connect('JAM-1234', 'user-1'); // second call while connected
+    expect(vi.mocked(io)).toHaveBeenCalledTimes(1); // only the first call created a socket
+  });
+});
+
 describe('suggestion_removed event', () => {
   it('removes the suggestion from queue store', () => {
     const store = useSocketStore();

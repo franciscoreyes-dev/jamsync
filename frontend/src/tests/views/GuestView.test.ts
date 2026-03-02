@@ -17,6 +17,7 @@ import GuestView from '@/views/GuestView.vue';
 
 const mockSuggestTrack = vi.fn();
 const mockVote = vi.fn();
+const mockConnect = vi.fn();
 
 const TRACK_META = {
   id: 'track-1', name: 'Blinding Lights', artists: ['The Weeknd'],
@@ -41,9 +42,17 @@ describe('GuestView', () => {
     queryRef = ref('');
     resultsRef = ref([]);
 
-    vi.mocked(useSocketStore).mockReturnValue({ suggestTrack: mockSuggestTrack } as never);
+    vi.mocked(useSocketStore).mockReturnValue({ suggestTrack: mockSuggestTrack, connect: mockConnect } as never);
     vi.mocked(useSpotifySearch).mockReturnValue({ query: queryRef, results: resultsRef, loading: ref(false) } as never);
     vi.mocked(useVoting).mockReturnValue({ vote: mockVote } as never);
+  });
+
+  it('connects to socket on mount with room code and userId', async () => {
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    mount(GuestView, { global: { plugins: [router] } });
+
+    expect(mockConnect).toHaveBeenCalledWith('JAM-ABCD', expect.any(String));
   });
 
   it('renders a search input bound to useSpotifySearch query', async () => {

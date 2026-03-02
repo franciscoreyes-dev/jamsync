@@ -5,6 +5,7 @@ import { useSocketStore } from '@/stores/socket';
 import { useUserStore } from '@/stores/user';
 import { useRoomStore } from '@/stores/room';
 import { useQueueStore } from '@/stores/queue';
+import { getHostIdFromJwt } from '@/lib/utils';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
@@ -21,7 +22,8 @@ const queue = useQueueStore();
 const roomId = route.params.id as string;
 
 onMounted(() => {
-  socket.connect(roomId, user.userId);
+  const hostId = getHostIdFromJwt();
+  socket.connect(roomId, hostId ?? user.userId);
 });
 
 const suggestions = computed(() => Object.entries(queue.suggestions));
