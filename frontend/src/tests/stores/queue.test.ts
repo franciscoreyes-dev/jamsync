@@ -108,4 +108,37 @@ describe('useQueueStore', () => {
     store.updateQueue(['track-5', 'track-6', 'track-7']);
     expect(store.queue).toEqual(['track-5', 'track-6', 'track-7']);
   });
+
+  it('setFromRoomState resets queueMetadata from previous state', () => {
+    const store = useQueueStore();
+    store.setQueueMeta('old-track', { id: 'old-track', name: 'Old', artists: [], album: '', albumArt: '', uri: '', durationMs: 0 });
+
+    store.setFromRoomState({ ...ROOM_STATE, queue: [], suggestions: [], queueMeta: {} });
+
+    expect(store.queueMetadata).toEqual({});
+  });
+
+  it('setFromRoomState populates muted flag on suggestions', () => {
+    const store = useQueueStore();
+    const stateWithMuted: RoomStatePayload = {
+      ...ROOM_STATE,
+      suggestions: [{ ...TRACK_META, voteCount: 1, muted: true }],
+    };
+    store.setFromRoomState(stateWithMuted);
+    expect(store.suggestions['track-1'].muted).toBe(true);
+  });
+
+  it('muteSuggestions sets muted=true for given trackIds', () => {
+    const store = useQueueStore();
+    store.setFromRoomState({ ...ROOM_STATE, suggestions: [{ ...TRACK_META, voteCount: 1, muted: false }] } as RoomStatePayload);
+    store.muteSuggestions([TRACK_META.id]);
+    expect(store.suggestions[TRACK_META.id].muted).toBe(true);
+  });
+
+  it('unmuteSuggestions sets muted=false for given trackIds', () => {
+    const store = useQueueStore();
+    store.setFromRoomState({ ...ROOM_STATE, suggestions: [{ ...TRACK_META, voteCount: 1, muted: true }] } as RoomStatePayload);
+    store.unmuteSuggestions([TRACK_META.id]);
+    expect(store.suggestions[TRACK_META.id].muted).toBe(false);
+  });
 });

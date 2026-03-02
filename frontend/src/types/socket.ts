@@ -22,7 +22,7 @@ export interface RoomStatePayload {
   voteThreshold: number;
   maxSuggestions: number;
   queue: string[];
-  suggestions: Array<SuggestionItem & { voteCount: number }>;
+  suggestions: Array<SuggestionItem & { voteCount: number; muted?: boolean }>;
   queueMeta?: Record<string, TrackMeta>;
   participantCount: number;
 }
@@ -58,6 +58,16 @@ export interface UserLeftPayload {
   participantCount: number;
 }
 
+export interface UserMutedPayload {
+  userId: string;
+  trackIds: string[];
+}
+
+export interface UserUnmutedPayload {
+  userId: string;
+  trackIds: string[];
+}
+
 export interface ErrorPayload {
   code: string;
 }
@@ -79,6 +89,11 @@ export interface LeaveRoomPayload {
 }
 
 export interface MuteUserPayload {
+  roomId: string;
+  userId: string;
+}
+
+export interface UnmuteUserPayload {
   roomId: string;
   userId: string;
 }

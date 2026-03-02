@@ -6,6 +6,7 @@ export interface SuggestionEntry {
   meta: SuggestionItem;
   voteCount: number;
   votedByMe: boolean;
+  muted: boolean;
 }
 
 export const useQueueStore = defineStore('queue', () => {
@@ -16,9 +17,10 @@ export const useQueueStore = defineStore('queue', () => {
   function setFromRoomState(data: RoomStatePayload) {
     queue.value = data.queue;
     suggestions.value = {};
+    queueMetadata.value = {};
     for (const s of data.suggestions) {
-      const { voteCount, ...meta } = s;
-      suggestions.value[s.id] = { meta, voteCount, votedByMe: false };
+      const { voteCount, muted, ...meta } = s;
+      suggestions.value[s.id] = { meta, voteCount, votedByMe: false, muted: muted ?? false };
     }
     if (data.queueMeta) {
       for (const [trackId, meta] of Object.entries(data.queueMeta)) {
@@ -28,7 +30,21 @@ export const useQueueStore = defineStore('queue', () => {
   }
 
   function addSuggestion({ trackId, trackMeta, voteCount }: SuggestionAddedPayload) {
-    suggestions.value[trackId] = { meta: trackMeta, voteCount, votedByMe: false };
+    suggestions.value[trackId] = { meta: trackMeta, voteCount, votedByMe: false, muted: false };
+  }
+
+  function muteSuggestions(trackIds: string[]) {
+    for (const id of trackIds) {
+      const entry = suggestions.value[id];
+      if (entry) entry.muted = true;
+    }
+  }
+
+  function unmuteSuggestions(trackIds: string[]) {
+    for (const id of trackIds) {
+      const entry = suggestions.value[id];
+      if (entry) entry.muted = false;
+    }
   }
 
   function updateVote(trackId: string, voteCount: number, votedByMe: boolean) {
@@ -50,5 +66,5 @@ export const useQueueStore = defineStore('queue', () => {
     queueMetadata.value[trackId] = meta;
   }
 
-  return { queue, suggestions, queueMetadata, setFromRoomState, addSuggestion, updateVote, approveSuggestion, updateQueue, setQueueMeta };
+  return { queue, suggestions, queueMetadata, setFromRoomState, addSuggestion, updateVote, approveSuggestion, updateQueue, setQueueMeta, muteSuggestions, unmuteSuggestions };
 });
