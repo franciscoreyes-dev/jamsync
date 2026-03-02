@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useSocketStore } from '@/stores/socket';
 import { useQueueStore } from '@/stores/queue';
 import { useRoomStore } from '@/stores/room';
@@ -15,10 +15,15 @@ import CardContent from '@/components/ui/CardContent.vue';
 import Badge from '@/components/ui/Badge.vue';
 
 const route = useRoute();
+const router = useRouter();
 const socket = useSocketStore();
 const queue = useQueueStore();
 const room = useRoomStore();
 const user = useUserStore();
+
+watch(() => socket.roomClosed, (closed) => {
+  if (closed) router.replace('/');
+});
 const { query, results } = useSpotifySearch();
 const { vote } = useVoting();
 

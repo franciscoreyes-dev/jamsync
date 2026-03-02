@@ -10,11 +10,17 @@ vi.mock('../../services/redis', () => ({
     set: vi.fn(),
     get: vi.fn(),
     hgetall: vi.fn(),
+    del: vi.fn(),
   },
 }));
 
-import { createRoom, getRoomByCode, updateRoom } from '../../services/room';
+vi.mock('../../lib/io', () => ({
+  getIo: vi.fn(),
+}));
+
+import { createRoom, getRoomByCode, updateRoom, deleteRoom } from '../../services/room';
 import * as redisModule from '../../services/redis';
+import * as ioModule from '../../lib/io';
 
 const redisMock = redisModule.redis as unknown as {
   hset: ReturnType<typeof vi.fn>;
@@ -22,6 +28,7 @@ const redisMock = redisModule.redis as unknown as {
   set: ReturnType<typeof vi.fn>;
   get: ReturnType<typeof vi.fn>;
   hgetall: ReturnType<typeof vi.fn>;
+  del: ReturnType<typeof vi.fn>;
 };
 
 describe('createRoom', () => {
@@ -167,5 +174,44 @@ describe('getRoomByCode', () => {
       code: 'ROOM_NOT_FOUND',
       statusCode: 404,
     });
+  });
+});
+
+describe('deleteRoom', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('throws ROOM_NOT_FOUND when room does not exist', async () => {
+    redisMock.hgetall.mockResolvedValue(null);
+
+    await expect(deleteRoom({ roomId: 'room-1', hostId: 'h1' })).rejects.toMatchObject({
+      code: 'ROOM_NOT_FOUND',
+      statusCode: 404,
+    });
+  });
+
+  it('throws UNAUTHORIZED when hostId does not match', async () => {
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD' });
+
+    await expect(deleteRoom({ roomId: 'room-1', hostId: 'h2' })).rejects.toMatchObject({
+      code: 'UNAUTHORIZED',
+      statusCode: 403,
+    });
+  });
+
+  it('deletes room keys from Redis and broadcasts room_closed', async () => {
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD' });
+    redisMock.del.mockResolvedValue(1);
+    const ioEmit = vi.fn();
+    vi.mocked(ioModule.getIo).mockReturnValue({ to: vi.fn(() => ({ emit: ioEmit })) } as never);
+
+    await deleteRoom({ roomId: 'room-1', hostId: 'h1' });
+
+    expect(redisMock.del).toHaveBeenCalledWith(
+      'room:room-1', 'queue:room-1', 'suggestions:room-1',
+      'queue_meta:room-1', 'users:room-1', 'code:JAM-ABCD'
+    );
+    expect(ioEmit).toHaveBeenCalledWith('room_closed', { roomId: 'room-1' });
   });
 });

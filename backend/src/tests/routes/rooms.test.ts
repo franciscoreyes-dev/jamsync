@@ -8,6 +8,7 @@ vi.mock('../../services/room', () => ({
   createRoom: vi.fn(),
   getRoomByCode: vi.fn(),
   updateRoom: vi.fn(),
+  deleteRoom: vi.fn(),
 }));
 
 import * as roomService from '../../services/room';
@@ -151,6 +152,61 @@ describe('PATCH /rooms/:id', () => {
       url: '/rooms/bad-id',
       headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
       payload: { voteThreshold: 3 },
+    });
+
+    expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('DELETE /rooms/:id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns 401 without a JWT', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'DELETE', url: '/rooms/room-1' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 204 on successful deletion', async () => {
+    vi.mocked(roomService.deleteRoom).mockResolvedValue(undefined);
+    const token = signJwt({ hostId: 'h1' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/rooms/room-1',
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(res.statusCode).toBe(204);
+    expect(vi.mocked(roomService.deleteRoom)).toHaveBeenCalledWith({ roomId: 'room-1', hostId: 'h1' });
+  });
+
+  it('returns 403 when UNAUTHORIZED is thrown', async () => {
+    vi.mocked(roomService.deleteRoom).mockRejectedValue(new AppError('UNAUTHORIZED', 403));
+    const token = signJwt({ hostId: 'h2' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/rooms/room-1',
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('returns 404 when ROOM_NOT_FOUND is thrown', async () => {
+    vi.mocked(roomService.deleteRoom).mockRejectedValue(new AppError('ROOM_NOT_FOUND', 404));
+    const token = signJwt({ hostId: 'h1' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/rooms/bad-id',
+      headers: { authorization: `Bearer ${token}` },
     });
 
     expect(res.statusCode).toBe(404);

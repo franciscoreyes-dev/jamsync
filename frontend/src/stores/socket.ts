@@ -19,6 +19,7 @@ export const useSocketStore = defineStore('socket', () => {
   const socket = ref<Socket | null>(null);
   const connected = ref(false);
   const error = ref<string | null>(null);
+  const roomClosed = ref(false);
 
   let _lastRoomCode = '';
   let _lastUserId = '';
@@ -94,6 +95,10 @@ export const useSocketStore = defineStore('socket', () => {
       if (data.voteThreshold !== undefined) room.setVoteThreshold(data.voteThreshold);
     });
 
+    s.on('room_closed', () => {
+      roomClosed.value = true;
+    });
+
     s.on('error', (data: { code: string }) => {
       error.value = data.code;
     });
@@ -123,5 +128,5 @@ export const useSocketStore = defineStore('socket', () => {
     socket.value?.emit('update_threshold', payload);
   }
 
-  return { socket, connected, error, connect, disconnect, suggestTrack, voteTrack, removeSuggestion, updateThreshold };
+  return { socket, connected, error, roomClosed, connect, disconnect, suggestTrack, voteTrack, removeSuggestion, updateThreshold };
 });

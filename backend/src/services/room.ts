@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { AppError } from '../errors';
 import { getHostSession, deleteHostSession, redis } from './redis';
+import { getIo } from '../lib/io';
 
 export interface CreateRoomInput {
   hostId: string;
@@ -88,6 +89,26 @@ export async function updateRoom(input: UpdateRoomInput): Promise<UpdateRoomResu
     voteThreshold: voteThreshold ?? Number(room.voteThreshold),
     maxSuggestions: maxSuggestions ?? Number(room.maxSuggestions),
   };
+}
+
+export interface DeleteRoomInput {
+  roomId: string;
+  hostId: string;
+}
+
+export async function deleteRoom(input: DeleteRoomInput): Promise<void> {
+  const { roomId, hostId } = input;
+
+  const room = await redis.hgetall(`room:${roomId}`);
+  if (!room?.hostId) throw new AppError('ROOM_NOT_FOUND', 404);
+  if (room.hostId !== hostId) throw new AppError('UNAUTHORIZED', 403);
+
+  await redis.del(
+    `room:${roomId}`, `queue:${roomId}`, `suggestions:${roomId}`,
+    `queue_meta:${roomId}`, `users:${roomId}`, `code:${room.code}`
+  );
+
+  getIo()?.to(roomId).emit('room_closed', { roomId });
 }
 
 export async function getRoomByCode(code: string): Promise<RoomInfo> {

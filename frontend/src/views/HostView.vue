@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useSocketStore } from '@/stores/socket';
 import { useUserStore } from '@/stores/user';
 import { useRoomStore } from '@/stores/room';
@@ -14,12 +14,17 @@ import Slider from '@/components/ui/Slider.vue';
 import QrcodeVue from 'qrcode.vue';
 
 const route = useRoute();
+const router = useRouter();
 const socket = useSocketStore();
 const user = useUserStore();
 const room = useRoomStore();
 const queue = useQueueStore();
 
 const roomId = route.params.id as string;
+
+watch(() => socket.roomClosed, (closed) => {
+  if (closed) router.replace('/');
+});
 
 onMounted(() => {
   const hostId = getHostIdFromJwt();

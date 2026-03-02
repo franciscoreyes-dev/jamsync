@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { requireJwt } from '../lib/require-jwt';
-import { createRoom, getRoomByCode, updateRoom } from '../services/room';
+import { createRoom, getRoomByCode, updateRoom, deleteRoom } from '../services/room';
 
 export const roomsRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post<{
@@ -56,6 +56,17 @@ export const roomsRoutes: FastifyPluginAsync = async (fastify) => {
       const { voteThreshold, maxSuggestions } = request.body;
       const result = await updateRoom({ roomId, hostId, voteThreshold, maxSuggestions });
       return reply.code(200).send(result);
+    }
+  );
+
+  fastify.delete<{ Params: { id: string } }>(
+    '/:id',
+    { preHandler: [requireJwt] },
+    async (request, reply) => {
+      const { hostId } = request.user;
+      const { id: roomId } = request.params;
+      await deleteRoom({ roomId, hostId });
+      return reply.code(204).send();
     }
   );
 

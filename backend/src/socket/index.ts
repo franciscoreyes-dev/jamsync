@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import type { FastifyInstance } from 'fastify';
 import { roomMiddleware } from './middleware';
 import { registerHandlers } from './handlers';
+import { setIo } from '../lib/io';
 
 export function setupSocket(fastify: FastifyInstance): void {
   const io = new Server(fastify.server, {
@@ -10,6 +11,7 @@ export function setupSocket(fastify: FastifyInstance): void {
     },
   });
 
+  setIo(io);
   io.use(roomMiddleware);
 
   io.on('connection', (socket) => {

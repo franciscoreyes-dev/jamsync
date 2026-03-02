@@ -228,3 +228,12 @@ describe('disconnect', () => {
     expect(store.connected).toBe(false);
   });
 });
+
+describe('room_closed event', () => {
+  it('sets roomClosed to true', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    capturedHandlers['room_closed']({ roomId: 'room-1' });
+    expect(store.roomClosed).toBe(true);
+  });
+});
