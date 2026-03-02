@@ -20,17 +20,21 @@ interface VotePayload {
 }
 
 async function getRoomState(roomId: string) {
-  const [room, queue, suggestionsRaw, queueMetaRaw] = await Promise.all([
+  const [room, queue, suggestionsRaw, queueMetaRaw, mutedUsers] = await Promise.all([
     redis.hgetall(`room:${roomId}`),
     redis.lrange(`queue:${roomId}`, 0, -1),
     redis.hgetall(`suggestions:${roomId}`),
     redis.hgetall(`queue_meta:${roomId}`),
+    redis.smembers(`muted:${roomId}`),
   ]);
+
+  const muted = new Set(mutedUsers ?? []);
 
   const suggestions = await Promise.all(
     Object.entries(suggestionsRaw ?? {}).map(async ([trackId, metaJson]) => {
       const voteCount = await redis.scard(`votes:${roomId}:${trackId}`);
-      return { ...(JSON.parse(metaJson) as Record<string, unknown>), voteCount };
+      const meta = JSON.parse(metaJson) as Record<string, unknown>;
+      return { ...meta, voteCount, muted: muted.has(meta.suggestedBy as string) };
     })
   );
 
@@ -88,6 +92,12 @@ export function registerHandlers(io: Server, socket: Socket): void {
 
   socket.on('suggest_track', async ({ trackId, trackMeta }: SuggestPayload) => {
     try {
+      const isMuted = await redis.sismember(`muted:${roomId}`, userId);
+      if (isMuted) {
+        socket.emit('error', { code: 'USER_MUTED' });
+        return;
+      }
+
       const maxSuggestionsStr = await redis.hget(`room:${roomId}`, 'maxSuggestions');
       const maxSuggestions = Number(maxSuggestionsStr ?? 3);
 
@@ -193,17 +203,30 @@ export function registerHandlers(io: Server, socket: Socket): void {
       }
       await redis.sadd(`muted:${roomId}`, targetUserId);
       const allSuggestions = await redis.hgetall(`suggestions:${roomId}`);
-      const toRemove = Object.entries(allSuggestions ?? {})
-        .filter(([, json]) => {
-          const meta = JSON.parse(json) as { suggestedBy?: string };
-          return meta.suggestedBy === targetUserId;
-        })
+      const trackIds = Object.entries(allSuggestions ?? {})
+        .filter(([, json]) => (JSON.parse(json) as { suggestedBy?: string }).suggestedBy === targetUserId)
         .map(([trackId]) => trackId)
         .sort();
-      if (toRemove.length > 0) {
-        await redis.hdel(`suggestions:${roomId}`, ...toRemove);
+      io.to(roomId).emit('user_muted', { userId: targetUserId, trackIds });
+    } catch {
+      socket.emit('error', { code: 'INTERNAL_ERROR' });
+    }
+  });
+
+  socket.on('unmute_user', async ({ userId: targetUserId }: { userId: string }) => {
+    try {
+      const hostId = await redis.hget(`room:${roomId}`, 'hostId');
+      if (hostId !== userId) {
+        socket.emit('error', { code: 'UNAUTHORIZED' });
+        return;
       }
-      io.to(roomId).emit('user_muted', { userId: targetUserId, removedTrackIds: toRemove });
+      await redis.srem(`muted:${roomId}`, targetUserId);
+      const allSuggestions = await redis.hgetall(`suggestions:${roomId}`);
+      const trackIds = Object.entries(allSuggestions ?? {})
+        .filter(([, json]) => (JSON.parse(json) as { suggestedBy?: string }).suggestedBy === targetUserId)
+        .map(([trackId]) => trackId)
+        .sort();
+      io.to(roomId).emit('user_unmuted', { userId: targetUserId, trackIds });
     } catch {
       socket.emit('error', { code: 'INTERNAL_ERROR' });
     }

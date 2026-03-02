@@ -6,6 +6,8 @@ vi.mock('../../services/redis', () => ({
     sadd: vi.fn(),
     scard: vi.fn(),
     srem: vi.fn(),
+    smembers: vi.fn(),
+    sismember: vi.fn(),
     hgetall: vi.fn(),
     hget: vi.fn(),
     hset: vi.fn(),
@@ -24,7 +26,10 @@ import { registerHandlers } from '../../socket/handlers';
 import * as redisModule from '../../services/redis';
 import * as spotifyModule from '../../services/spotify';
 
-const r = redisModule.redis as unknown as Record<string, ReturnType<typeof vi.fn>>;
+const r = redisModule.redis as unknown as Record<string, ReturnType<typeof vi.fn>> & {
+  smembers: ReturnType<typeof vi.fn>;
+  sismember: ReturnType<typeof vi.fn>;
+};
 
 // Capture handlers registered via socket.on()
 function makeSocket(roomId = 'room-1', userId = 'user-1') {
@@ -70,6 +75,7 @@ describe('join_room', () => {
       .mockResolvedValueOnce(null)  // suggestions empty
       .mockResolvedValueOnce(null); // queue_meta empty
     r.lrange.mockResolvedValue([]);
+    r.smembers.mockResolvedValue([]);
     r.scard.mockResolvedValue(1);
 
     registerHandlers(io, socket);
@@ -89,6 +95,7 @@ describe('suggest_track', () => {
     const socket = makeSocket();
     const { io } = makeIo();
 
+    r.sismember.mockResolvedValue(0); // not muted
     r.hget.mockResolvedValue('2'); // maxSuggestions = 2
     r.hgetall.mockResolvedValue({
       'track-a': JSON.stringify({ uri: 'uri-a', suggestedBy: 'user-1' }),
@@ -109,6 +116,7 @@ describe('suggest_track', () => {
     const socket = makeSocket();
     const { io, ioEmit } = makeIo();
 
+    r.sismember.mockResolvedValue(0); // not muted
     r.hget.mockResolvedValue('3'); // maxSuggestions = 3
     r.hgetall.mockResolvedValue(null); // no existing suggestions
     r.hset.mockResolvedValue(1);
@@ -123,6 +131,18 @@ describe('suggest_track', () => {
       expect.stringContaining('"uri":"spotify:track:1"')
     );
     expect(ioEmit).toHaveBeenCalledWith('suggestion_added', expect.objectContaining({ trackId: 'track-1' }));
+  });
+
+  it('emits USER_MUTED error when sender is muted', async () => {
+    const socket = makeSocket('room-1', 'muted-user');
+    const { io } = makeIo();
+    r.sismember.mockResolvedValue(1);     // is muted — handler returns early, hget never called
+    registerHandlers(io, socket);
+    await socket._captured['suggest_track']({
+      trackId: 't1',
+      trackMeta: { id: 't1', uri: 'u', name: 'S', artists: [], album: '', albumArt: '', durationMs: 0 },
+    });
+    expect(socket._emit).toHaveBeenCalledWith('error', { code: 'USER_MUTED' });
   });
 });
 
@@ -262,7 +282,7 @@ describe('mute_user', () => {
     expect(r.sadd).not.toHaveBeenCalled();
   });
 
-  it('adds user to muted set, removes their suggestions, broadcasts user_muted', async () => {
+  it('adds user to muted set, does NOT delete suggestions, broadcasts user_muted with trackIds', async () => {
     const socket = makeSocket('room-1', 'user-host');
     const { io, ioEmit } = makeIo();
     r.hget.mockResolvedValueOnce('user-host'); // hostId
@@ -272,14 +292,45 @@ describe('mute_user', () => {
       'track-2': JSON.stringify({ suggestedBy: 'user-other', name: 'Song B' }),
       'track-3': JSON.stringify({ suggestedBy: 'target-user', name: 'Song C' }),
     });
-    r.hdel.mockResolvedValue(2);
     registerHandlers(io, socket);
     await socket._captured['mute_user']({ userId: 'target-user' });
     expect(r.sadd).toHaveBeenCalledWith('muted:room-1', 'target-user');
-    expect(r.hdel).toHaveBeenCalledWith('suggestions:room-1', 'track-1', 'track-3');
+    expect(r.hdel).not.toHaveBeenCalled();
     expect(ioEmit).toHaveBeenCalledWith('user_muted', {
       userId: 'target-user',
-      removedTrackIds: expect.arrayContaining(['track-1', 'track-3']),
+      trackIds: expect.arrayContaining(['track-1', 'track-3']),
+    });
+  });
+});
+
+describe('unmute_user', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('emits UNAUTHORIZED when caller is not the host', async () => {
+    const socket = makeSocket('room-1', 'user-NOT-host');
+    const { io } = makeIo();
+    r.hget.mockResolvedValueOnce('user-host');
+    registerHandlers(io, socket);
+    await socket._captured['unmute_user']({ userId: 'target-user' });
+    expect(socket._emit).toHaveBeenCalledWith('error', { code: 'UNAUTHORIZED' });
+    expect(r.srem).not.toHaveBeenCalled();
+  });
+
+  it('removes user from muted set and broadcasts user_unmuted with their track IDs', async () => {
+    const socket = makeSocket('room-1', 'user-host');
+    const { io, ioEmit } = makeIo();
+    r.hget.mockResolvedValueOnce('user-host');
+    r.srem.mockResolvedValue(1);
+    r.hgetall.mockResolvedValue({
+      'track-1': JSON.stringify({ suggestedBy: 'target-user', name: 'Song A' }),
+      'track-2': JSON.stringify({ suggestedBy: 'user-other', name: 'Song B' }),
+    });
+    registerHandlers(io, socket);
+    await socket._captured['unmute_user']({ userId: 'target-user' });
+    expect(r.srem).toHaveBeenCalledWith('muted:room-1', 'target-user');
+    expect(ioEmit).toHaveBeenCalledWith('user_unmuted', {
+      userId: 'target-user',
+      trackIds: ['track-1'],
     });
   });
 });
