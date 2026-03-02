@@ -11,6 +11,8 @@ vi.mock('../../services/redis', () => ({
     get: vi.fn(),
     hgetall: vi.fn(),
     del: vi.fn(),
+    sadd: vi.fn(),
+    srem: vi.fn(),
   },
 }));
 
@@ -29,6 +31,8 @@ const redisMock = redisModule.redis as unknown as {
   get: ReturnType<typeof vi.fn>;
   hgetall: ReturnType<typeof vi.fn>;
   del: ReturnType<typeof vi.fn>;
+  sadd: ReturnType<typeof vi.fn>;
+  srem: ReturnType<typeof vi.fn>;
 };
 
 describe('createRoom', () => {
@@ -103,6 +107,18 @@ describe('createRoom', () => {
     await createRoom({ hostId: 'h1', name: 'Test Room', voteThreshold: 3, maxSuggestions: 3 });
 
     expect(vi.mocked(redisModule.deleteHostSession)).toHaveBeenCalledWith('h1');
+  });
+
+  it('adds roomId to active_rooms SET', async () => {
+    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt' });
+    redisMock.hset.mockResolvedValue(1);
+    redisMock.expire.mockResolvedValue(1);
+    redisMock.set.mockResolvedValue('OK');
+    redisMock.sadd.mockResolvedValue(1);
+
+    const result = await createRoom({ hostId: 'h1', name: 'Test', voteThreshold: 3, maxSuggestions: 3 });
+
+    expect(redisMock.sadd).toHaveBeenCalledWith('active_rooms', result.roomId);
   });
 });
 
@@ -213,6 +229,19 @@ describe('deleteRoom', () => {
       'queue_meta:room-1', 'users:room-1', 'code:JAM-ABCD'
     );
     expect(ioEmit).toHaveBeenCalledWith('room_closed', { roomId: 'room-1' });
+  });
+
+  it('removes roomId from active_rooms SET on deletion', async () => {
+    redisMock.get.mockResolvedValue(null);
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD' });
+    redisMock.del.mockResolvedValue(1);
+    redisMock.srem.mockResolvedValue(1);
+    const ioEmit = vi.fn();
+    vi.mocked(ioModule.getIo).mockReturnValue({ to: vi.fn(() => ({ emit: ioEmit })) } as never);
+
+    await deleteRoom({ roomId: 'room-1', hostId: 'h1' });
+
+    expect(redisMock.srem).toHaveBeenCalledWith('active_rooms', 'room-1');
   });
 
   it('resolves room code to UUID before deletion', async () => {

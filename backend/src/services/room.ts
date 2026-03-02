@@ -44,6 +44,7 @@ export async function createRoom(input: CreateRoomInput): Promise<CreateRoomResu
   });
   await redis.expire(`room:${roomId}`, 86400);
   await redis.set(`code:${code}`, roomId, 'EX', 86400);
+  await redis.sadd('active_rooms', roomId);
   await deleteHostSession(hostId);
 
   return { roomId, code };
@@ -110,6 +111,7 @@ export async function deleteRoom(input: DeleteRoomInput): Promise<void> {
     `room:${roomId}`, `queue:${roomId}`, `suggestions:${roomId}`,
     `queue_meta:${roomId}`, `users:${roomId}`, `code:${room.code}`
   );
+  await redis.srem('active_rooms', roomId);
 
   getIo()?.to(roomId).emit('room_closed', { roomId });
 }
