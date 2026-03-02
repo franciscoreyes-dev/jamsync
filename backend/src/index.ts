@@ -7,6 +7,8 @@ import { spotifyRoutes } from './routes/spotify';
 import { setupSocket } from './socket';
 import { AppError } from './errors';
 import { registerRateLimit } from './plugins/rateLimit';
+import { startQueuePoller } from './jobs/queuePoller';
+import { startRoomCleanup } from './jobs/roomCleanup';
 
 const fastify = Fastify({ logger: true });
 
@@ -35,6 +37,8 @@ async function start() {
 
   const port = Number(process.env.PORT ?? 3000);
   await fastify.listen({ port, host: '0.0.0.0' });
+  startQueuePoller();
+  startRoomCleanup();
 }
 
 start().catch((err) => {
