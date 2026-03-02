@@ -112,6 +112,20 @@ export async function addToQueue(trackUri: string, hostToken: string): Promise<v
   );
 }
 
+export async function getCurrentlyPlaying(
+  hostToken: string
+): Promise<{ uri: string } | null> {
+  try {
+    const { status, data } = await axios.get(`${SPOTIFY_API}/me/player/currently-playing`, {
+      headers: { Authorization: `Bearer ${hostToken}` },
+    });
+    if (status === 204 || !data?.item) return null;
+    return { uri: data.item.uri as string };
+  } catch {
+    return null;
+  }
+}
+
 export async function searchTracks(q: string, limit = 10): Promise<SpotifyTrack[]> {
   const token = await getAppToken();
   const params = new URLSearchParams({ q, type: 'track', limit: String(limit) });

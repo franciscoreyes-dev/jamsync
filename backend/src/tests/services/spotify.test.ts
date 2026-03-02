@@ -17,7 +17,7 @@ process.env.SPOTIFY_CLIENT_ID = 'test-client-id';
 process.env.SPOTIFY_CLIENT_SECRET = 'test-client-secret';
 process.env.SPOTIFY_REDIRECT_URI = 'http://localhost:3000/auth/callback';
 
-import { exchangeCode, getMe, refreshHostToken, getAppToken, searchTracks } from '../../services/spotify';
+import { exchangeCode, getMe, refreshHostToken, getAppToken, searchTracks, getCurrentlyPlaying } from '../../services/spotify';
 import * as redisModule from '../../services/redis';
 
 const redisMock = redisModule.redis as unknown as {
@@ -92,6 +92,31 @@ describe('getAppToken', () => {
 
     expect(token).toBe('new-app-token');
     expect(redisMock.set).toHaveBeenCalledWith('spotify:app_token', 'new-app-token', 'EX', 3600);
+  });
+});
+
+describe('getCurrentlyPlaying', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns track uri when something is playing', async () => {
+    vi.spyOn(axios, 'get').mockResolvedValue({
+      status: 200,
+      data: { item: { uri: 'spotify:track:abc123' } },
+    });
+    const result = await getCurrentlyPlaying('token');
+    expect(result).toEqual({ uri: 'spotify:track:abc123' });
+  });
+
+  it('returns null when nothing is playing (204)', async () => {
+    vi.spyOn(axios, 'get').mockResolvedValue({ status: 204, data: null });
+    const result = await getCurrentlyPlaying('token');
+    expect(result).toBeNull();
+  });
+
+  it('returns null on error', async () => {
+    vi.spyOn(axios, 'get').mockRejectedValue(new Error('network'));
+    const result = await getCurrentlyPlaying('token');
+    expect(result).toBeNull();
   });
 });
 
