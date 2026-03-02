@@ -6,6 +6,7 @@ import { setActivePinia, createPinia } from 'pinia';
 vi.mock('@/stores/socket', () => ({ useSocketStore: vi.fn() }));
 vi.mock('@/stores/user', () => ({ useUserStore: vi.fn() }));
 vi.mock('socket.io-client', () => ({ io: vi.fn() }));
+vi.mock('qrcode.vue', () => ({ default: { template: '<div />' } }));
 
 import { useSocketStore } from '@/stores/socket';
 import { useUserStore } from '@/stores/user';

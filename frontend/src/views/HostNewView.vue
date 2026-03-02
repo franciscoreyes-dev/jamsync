@@ -18,12 +18,12 @@ onMounted(async () => {
   localStorage.setItem('jamsync_token', token);
 
   try {
-    const { data } = await api.post<{ roomId: string }>('/rooms', {
+    const { data } = await api.post<{ roomId: string; code: string }>('/rooms', {
       name: 'My Jam Session',
       voteThreshold: 3,
       maxSuggestions: 3,
     });
-    router.replace({ name: 'host', params: { id: data.roomId } });
+    router.replace({ name: 'host', params: { id: data.code } });
   } catch {
     router.replace({ name: 'auth-error', query: { reason: 'ROOM_CREATE_FAILED' } });
   }

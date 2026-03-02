@@ -16,6 +16,7 @@ export interface SuggestionItem extends TrackMeta {
 
 export interface RoomStatePayload {
   roomId: string;
+  code?: string;
   name: string;
   status: string;
   voteThreshold: number;

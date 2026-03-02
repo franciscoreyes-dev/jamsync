@@ -13,6 +13,7 @@ export const useRoomStore = defineStore('room', () => {
 
   function setRoomState(data: RoomStatePayload) {
     roomId.value = data.roomId;
+    if (data.code) code.value = data.code;
     name.value = data.name;
     status.value = data.status;
     voteThreshold.value = data.voteThreshold;

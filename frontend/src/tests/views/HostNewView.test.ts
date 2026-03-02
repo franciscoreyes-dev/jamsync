@@ -37,7 +37,7 @@ describe('HostNewView', () => {
   });
 
   it('stores the JWT in localStorage', async () => {
-    vi.mocked(apiModule.api.post).mockResolvedValue({ data: { roomId: 'r1' } });
+    vi.mocked(apiModule.api.post).mockResolvedValue({ data: { roomId: 'r1', code: 'JAM-TEST' } });
     const router = buildRouter();
     await router.push('/host/new?token=my-jwt');
     mount(HostNewView, { global: { plugins: [router] } });
@@ -47,7 +47,7 @@ describe('HostNewView', () => {
   });
 
   it('calls POST /rooms with default payload', async () => {
-    vi.mocked(apiModule.api.post).mockResolvedValue({ data: { roomId: 'r1' } });
+    vi.mocked(apiModule.api.post).mockResolvedValue({ data: { roomId: 'r1', code: 'JAM-TEST' } });
     const router = buildRouter();
     await router.push('/host/new?token=my-jwt');
     mount(HostNewView, { global: { plugins: [router] } });
@@ -60,15 +60,15 @@ describe('HostNewView', () => {
     });
   });
 
-  it('redirects to /host/:id on success', async () => {
-    vi.mocked(apiModule.api.post).mockResolvedValue({ data: { roomId: 'room-abc' } });
+  it('redirects to /host/:id on success using the room code', async () => {
+    vi.mocked(apiModule.api.post).mockResolvedValue({ data: { roomId: 'room-abc', code: 'JAM-ABCD' } });
     const router = buildRouter();
     await router.push('/host/new?token=my-jwt');
     mount(HostNewView, { global: { plugins: [router] } });
     await flushPromises();
 
     expect(router.currentRoute.value.name).toBe('host');
-    expect(router.currentRoute.value.params.id).toBe('room-abc');
+    expect(router.currentRoute.value.params.id).toBe('JAM-ABCD');
   });
 
   it('redirects to auth-error on POST /rooms failure', async () => {

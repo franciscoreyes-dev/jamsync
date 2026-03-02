@@ -2,4 +2,38 @@
 
 @theme {
   --color-spotify: #1DB954;
+  --color-background: #09090b;
+  --color-surface: #18181b;
+  --color-surface-raised: #27272a;
+  --color-border: #3f3f46;
+  --color-muted: #71717a;
+  --color-foreground: #fafafa;
+  --color-accent: #1DB954;
+  --color-accent-hover: #1aa34a;
+  --color-destructive: #ef4444;
+  --color-destructive-hover: #dc2626;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: #09090b;
+  color: #fafafa;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-color: #09090b;
+  color: #fafafa;
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
 }

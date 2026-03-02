@@ -20,7 +20,17 @@ export const useSocketStore = defineStore('socket', () => {
   const connected = ref(false);
   const error = ref<string | null>(null);
 
+  let _lastRoomCode = '';
+  let _lastUserId = '';
+  let _reconnectAttempts = 0;
+  const MAX_RECONNECT = 3;
+  const RECONNECT_DELAY_MS = 2000;
+
   function connect(roomCode: string, userId: string) {
+    _lastRoomCode = roomCode;
+    _lastUserId = userId;
+    _reconnectAttempts = 0;
+
     const s = io(import.meta.env.VITE_API_URL ?? 'http://localhost:3000', {
       auth: { roomCode, userId },
     });
@@ -30,8 +40,18 @@ export const useSocketStore = defineStore('socket', () => {
     const room = useRoomStore();
     const queue = useQueueStore();
 
-    s.on('connect', () => { connected.value = true; });
-    s.on('disconnect', () => { connected.value = false; });
+    s.on('connect', () => { connected.value = true; _reconnectAttempts = 0; });
+    s.on('disconnect', () => {
+      connected.value = false;
+      if (_reconnectAttempts < MAX_RECONNECT) {
+        _reconnectAttempts++;
+        setTimeout(() => {
+          if (!connected.value && _lastRoomCode) {
+            connect(_lastRoomCode, _lastUserId);
+          }
+        }, RECONNECT_DELAY_MS);
+      }
+    });
 
     s.on('room_state', (data: RoomStatePayload) => {
       room.setRoomState(data);
