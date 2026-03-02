@@ -20,6 +20,11 @@ export const useQueueStore = defineStore('queue', () => {
       const { voteCount, ...meta } = s;
       suggestions.value[s.id] = { meta, voteCount, votedByMe: false };
     }
+    if (data.queueMeta) {
+      for (const [trackId, meta] of Object.entries(data.queueMeta)) {
+        queueMetadata.value[trackId] = meta;
+      }
+    }
   }
 
   function addSuggestion({ trackId, trackMeta, voteCount }: SuggestionAddedPayload) {

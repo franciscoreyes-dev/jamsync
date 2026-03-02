@@ -47,6 +47,19 @@ describe('useQueueStore', () => {
     expect(store.suggestions['track-1'].meta.name).toBe('Blinding Lights');
   });
 
+  it('setFromRoomState populates queueMetadata from queueMeta', () => {
+    const store = useQueueStore();
+    const stateWithMeta: RoomStatePayload = {
+      ...ROOM_STATE,
+      queueMeta: {
+        'track-2': { id: 'track-2', name: 'Save Your Tears', artists: ['The Weeknd'], album: 'After Hours', albumArt: '', uri: 'spotify:track:2', durationMs: 215000 },
+      },
+    };
+    store.setFromRoomState(stateWithMeta);
+    expect(store.queueMetadata['track-2'].name).toBe('Save Your Tears');
+    expect(store.queueMetadata['track-2'].artists).toEqual(['The Weeknd']);
+  });
+
   it('addSuggestion adds an entry with votedByMe=false', () => {
     const store = useQueueStore();
     store.addSuggestion({ trackId: 'track-1', trackMeta: TRACK_META, voteCount: 0 });

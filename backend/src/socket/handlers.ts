@@ -20,10 +20,11 @@ interface VotePayload {
 }
 
 async function getRoomState(roomId: string) {
-  const [room, queue, suggestionsRaw] = await Promise.all([
+  const [room, queue, suggestionsRaw, queueMetaRaw] = await Promise.all([
     redis.hgetall(`room:${roomId}`),
     redis.lrange(`queue:${roomId}`, 0, -1),
     redis.hgetall(`suggestions:${roomId}`),
+    redis.hgetall(`queue_meta:${roomId}`),
   ]);
 
   const suggestions = await Promise.all(
@@ -32,6 +33,11 @@ async function getRoomState(roomId: string) {
       return { ...(JSON.parse(metaJson) as Record<string, unknown>), voteCount };
     })
   );
+
+  const queueMeta: Record<string, unknown> = {};
+  for (const [trackId, metaJson] of Object.entries(queueMetaRaw ?? {})) {
+    queueMeta[trackId] = JSON.parse(metaJson);
+  }
 
   const participantCount = await redis.scard(`users:${roomId}`);
 
@@ -43,6 +49,7 @@ async function getRoomState(roomId: string) {
     maxSuggestions: Number(room.maxSuggestions),
     queue,
     suggestions,
+    queueMeta,
     participantCount,
   };
 }
@@ -125,6 +132,7 @@ export function registerHandlers(io: Server, socket: Socket): void {
         await Promise.all([
           redis.hdel(`suggestions:${roomId}`, trackId),
           redis.rpush(`queue:${roomId}`, trackId),
+          redis.hset(`queue_meta:${roomId}`, trackId, trackMetaJson),
         ]);
 
         await addToQueueWithRefresh(trackMeta.uri, roomId);

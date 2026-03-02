@@ -67,7 +67,8 @@ describe('join_room', () => {
     r.sadd.mockResolvedValue(1);
     r.hgetall
       .mockResolvedValueOnce({ name: 'Test Room', status: 'active', voteThreshold: '3', maxSuggestions: '3' })
-      .mockResolvedValueOnce(null); // suggestions empty
+      .mockResolvedValueOnce(null)  // suggestions empty
+      .mockResolvedValueOnce(null); // queue_meta empty
     r.lrange.mockResolvedValue([]);
     r.scard.mockResolvedValue(1);
 
@@ -76,7 +77,7 @@ describe('join_room', () => {
 
     expect(r.sadd).toHaveBeenCalledWith('users:room-1', 'user-1');
     expect(socket.join).toHaveBeenCalledWith('room-1');
-    expect(socket._emit).toHaveBeenCalledWith('room_state', expect.objectContaining({ name: 'Test Room' }));
+    expect(socket._emit).toHaveBeenCalledWith('room_state', expect.objectContaining({ name: 'Test Room', queueMeta: {} }));
     expect(socket._toEmit).toHaveBeenCalledWith('user_joined', expect.objectContaining({ userId: 'user-1' }));
   });
 });
@@ -158,14 +159,16 @@ describe('vote_track', () => {
     const socket = makeSocket();
     const { io, ioEmit } = makeIo();
 
+    const trackMetaJson = JSON.stringify({ uri: 'spotify:track:1', name: 'Song' });
     r.sadd.mockResolvedValue(1);
     r.scard.mockResolvedValue(3); // voteCount = 3
     r.hget
-      .mockResolvedValueOnce('3')                                              // voteThreshold
-      .mockResolvedValueOnce(JSON.stringify({ uri: 'spotify:track:1', name: 'Song' })) // trackMeta
-      .mockResolvedValueOnce('host-access-token');                             // hostToken
+      .mockResolvedValueOnce('3')             // voteThreshold
+      .mockResolvedValueOnce(trackMetaJson)    // trackMeta from suggestions
+      .mockResolvedValueOnce('host-token');    // hostToken in addToQueueWithRefresh
     r.hdel.mockResolvedValue(1);
     r.rpush.mockResolvedValue(1);
+    r.hset.mockResolvedValue(1);
     r.lrange.mockResolvedValue(['track-1']);
     vi.mocked(spotifyModule.addToQueue).mockResolvedValue(undefined);
 
@@ -174,7 +177,8 @@ describe('vote_track', () => {
 
     expect(r.hdel).toHaveBeenCalledWith('suggestions:room-1', 'track-1');
     expect(r.rpush).toHaveBeenCalledWith('queue:room-1', 'track-1');
-    expect(spotifyModule.addToQueue).toHaveBeenCalledWith('spotify:track:1', 'host-access-token');
+    expect(r.hset).toHaveBeenCalledWith('queue_meta:room-1', 'track-1', trackMetaJson);
+    expect(spotifyModule.addToQueue).toHaveBeenCalledWith('spotify:track:1', 'host-token');
     expect(ioEmit).toHaveBeenCalledWith('track_approved', expect.objectContaining({ trackId: 'track-1' }));
     expect(ioEmit).toHaveBeenCalledWith('queue_updated', expect.objectContaining({ queue: ['track-1'] }));
   });

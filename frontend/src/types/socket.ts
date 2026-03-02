@@ -23,6 +23,7 @@ export interface RoomStatePayload {
   maxSuggestions: number;
   queue: string[];
   suggestions: Array<SuggestionItem & { voteCount: number }>;
+  queueMeta?: Record<string, TrackMeta>;
   participantCount: number;
 }
 
