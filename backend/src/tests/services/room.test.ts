@@ -214,4 +214,22 @@ describe('deleteRoom', () => {
     );
     expect(ioEmit).toHaveBeenCalledWith('room_closed', { roomId: 'room-1' });
   });
+
+  it('resolves room code to UUID before deletion', async () => {
+    redisMock.get.mockResolvedValue('room-uuid-1');
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD' });
+    redisMock.del.mockResolvedValue(1);
+    const ioEmit = vi.fn();
+    vi.mocked(ioModule.getIo).mockReturnValue({ to: vi.fn(() => ({ emit: ioEmit })) } as never);
+
+    await deleteRoom({ roomId: 'JAM-ABCD', hostId: 'h1' });
+
+    expect(redisMock.get).toHaveBeenCalledWith('code:JAM-ABCD');
+    expect(redisMock.hgetall).toHaveBeenCalledWith('room:room-uuid-1');
+    expect(redisMock.del).toHaveBeenCalledWith(
+      'room:room-uuid-1', 'queue:room-uuid-1', 'suggestions:room-uuid-1',
+      'queue_meta:room-uuid-1', 'users:room-uuid-1', 'code:JAM-ABCD'
+    );
+    expect(ioEmit).toHaveBeenCalledWith('room_closed', { roomId: 'room-uuid-1' });
+  });
 });

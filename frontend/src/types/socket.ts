@@ -72,3 +72,13 @@ export interface SuggestTrackPayload {
 export interface VoteTrackPayload {
   trackId: string;
 }
+
+export interface LeaveRoomPayload {
+  roomId: string;
+  userId: string;
+}
+
+export interface MuteUserPayload {
+  roomId: string;
+  userId: string;
+}

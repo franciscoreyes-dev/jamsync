@@ -6,6 +6,8 @@ import { useUserStore } from '@/stores/user';
 import { useRoomStore } from '@/stores/room';
 import { useQueueStore } from '@/stores/queue';
 import { getHostIdFromJwt } from '@/lib/utils';
+import { api } from '@/lib/api';
+import { AudioLines, Check, Music, Trash2, VolumeX, X } from 'lucide-vue-next';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
@@ -56,6 +58,10 @@ function remove(trackId: string) {
   socket.removeSuggestion({ roomId, trackId });
 }
 
+function mute(userId: string) {
+  socket.muteUser({ roomId, userId });
+}
+
 function onThresholdChange(event: Event) {
   const threshold = Number((event.target as HTMLInputElement).value);
   socket.updateThreshold({ roomId, threshold });
@@ -66,6 +72,10 @@ function voteProgress(voteCount: number): number {
   if (!threshold) return 0;
   return Math.min((voteCount / threshold) * 100, 100);
 }
+
+async function closeRoom() {
+  await api.delete(`/rooms/${roomId}`);
+}
 </script>
 
 <template>
@@ -73,17 +83,22 @@ function voteProgress(voteCount: number): number {
     <!-- Header -->
     <header class="border-b border-zinc-800 px-4 py-3 flex items-center justify-between sticky top-0 bg-zinc-950/90 backdrop-blur z-10">
       <div class="flex items-center gap-2">
-        <span class="text-green-500 text-lg">♫</span>
+        <span class="text-green-500 text-lg"><AudioLines /></span>
         <span class="font-semibold text-white">{{ room.name ?? 'Jamsync' }}</span>
         <Badge variant="secondary" class="ml-1">Host</Badge>
       </div>
-      <div
-        class="flex items-center gap-1.5 transition-transform"
-        :class="{ 'scale-125': participantPulse }"
-      >
-        <span class="w-2 h-2 rounded-full bg-green-500 inline-block" />
-        <span class="text-zinc-300 text-sm font-medium" data-testid="participant-count">{{ room.participantCount }}</span>
-        <span class="text-zinc-500 text-xs">online</span>
+      <div class="flex items-center gap-3">
+        <div
+          class="flex items-center gap-1.5 transition-transform"
+          :class="{ 'scale-125': participantPulse }"
+        >
+          <span class="w-2 h-2 rounded-full bg-green-500 inline-block" />
+          <span class="text-zinc-300 text-sm font-medium" data-testid="participant-count">{{ room.participantCount }}</span>
+          <span class="text-zinc-500 text-xs">online</span>
+        </div>
+        <Button data-testid="close-room-btn" size="sm" variant="destructive" class="flex items-center gap-1.5" @click="closeRoom">
+          <X class="w-3.5 h-3.5" />Close Room
+        </Button>
       </div>
     </header>
 
@@ -157,12 +172,22 @@ function voteProgress(voteCount: number): number {
                     <span class="opacity-50"> / {{ room.voteThreshold }}</span>
                   </Badge>
                   <Button
+                    :data-testid="`mute-btn-${trackId}`"
+                    size="sm"
+                    variant="ghost"
+                    class="flex items-center gap-1"
+                    @click="mute(entry.meta.suggestedBy)"
+                  >
+                    <VolumeX class="w-3.5 h-3.5" />Mute
+                  </Button>
+                  <Button
                     :data-testid="`remove-btn-${trackId}`"
                     size="sm"
                     variant="destructive"
+                    class="flex items-center gap-1"
                     @click="remove(trackId)"
                   >
-                    Remove
+                    <Trash2 class="w-3.5 h-3.5" />Remove
                   </Button>
                 </div>
               </div>
@@ -196,13 +221,13 @@ function voteProgress(voteCount: number): number {
                 class="w-10 h-10 rounded object-cover flex-shrink-0"
               />
               <div class="w-10 h-10 rounded bg-zinc-800 flex items-center justify-center flex-shrink-0 text-zinc-600" v-else>
-                ♪
+                <Music class="w-4 h-4" />
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-white truncate">{{ meta?.name ?? trackId }}</p>
                 <p v-if="meta" class="text-xs text-zinc-500 truncate">{{ meta.artists.join(', ') }}</p>
               </div>
-              <span class="text-green-500 text-xs font-semibold">✓</span>
+              <span class="text-green-500 text-xs font-semibold"><Check/></span>
             </CardContent>
           </Card>
         </TransitionGroup>

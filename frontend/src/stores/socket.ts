@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { io, type Socket } from 'socket.io-client';
 import { useRoomStore } from './room';
 import { useQueueStore } from './queue';
+import { useToastStore } from './toast';
 import type {
   RoomStatePayload,
   SuggestionAddedPayload,
@@ -13,6 +14,8 @@ import type {
   UserLeftPayload,
   SuggestTrackPayload,
   VoteTrackPayload,
+  LeaveRoomPayload,
+  MuteUserPayload,
 } from '@/types/socket';
 
 export const useSocketStore = defineStore('socket', () => {
@@ -73,6 +76,7 @@ export const useSocketStore = defineStore('socket', () => {
     s.on('track_approved', (data: TrackApprovedPayload) => {
       queue.approveSuggestion(data.trackId);
       queue.setQueueMeta(data.trackId, data.trackMeta);
+      useToastStore().addToast({ message: `"${data.trackMeta.name}" added to queue`, variant: 'success' });
     });
 
     s.on('suggestion_removed', (data: { trackId: string }) => {
@@ -85,6 +89,7 @@ export const useSocketStore = defineStore('socket', () => {
 
     s.on('user_joined', (data: UserJoinedPayload) => {
       room.setParticipantCount(data.participantCount);
+      useToastStore().addToast({ message: 'Someone joined the room', variant: 'info' });
     });
 
     s.on('user_left', (data: UserLeftPayload) => {
@@ -101,6 +106,7 @@ export const useSocketStore = defineStore('socket', () => {
 
     s.on('error', (data: { code: string }) => {
       error.value = data.code;
+      useToastStore().addToast({ message: data.code, variant: 'error' });
     });
 
     s.emit('join_room');
@@ -128,5 +134,13 @@ export const useSocketStore = defineStore('socket', () => {
     socket.value?.emit('update_threshold', payload);
   }
 
-  return { socket, connected, error, roomClosed, connect, disconnect, suggestTrack, voteTrack, removeSuggestion, updateThreshold };
+  function leaveRoom(payload: LeaveRoomPayload) {
+    socket.value?.emit('leave_room', payload);
+  }
+
+  function muteUser(payload: MuteUserPayload) {
+    socket.value?.emit('mute_user', payload);
+  }
+
+  return { socket, connected, error, roomClosed, connect, disconnect, suggestTrack, voteTrack, removeSuggestion, updateThreshold, leaveRoom, muteUser };
 });

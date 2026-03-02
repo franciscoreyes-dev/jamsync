@@ -7,16 +7,19 @@ vi.mock('@/stores/socket', () => ({ useSocketStore: vi.fn() }));
 vi.mock('@/stores/user', () => ({ useUserStore: vi.fn() }));
 vi.mock('socket.io-client', () => ({ io: vi.fn() }));
 vi.mock('qrcode.vue', () => ({ default: { template: '<div />' } }));
+vi.mock('@/lib/api', () => ({ api: { delete: vi.fn().mockResolvedValue({}) } }));
 
 import { useSocketStore } from '@/stores/socket';
 import { useUserStore } from '@/stores/user';
 import { useQueueStore } from '@/stores/queue';
 import { useRoomStore } from '@/stores/room';
+import { api } from '@/lib/api';
 import HostView from '@/views/HostView.vue';
 
 const mockConnect = vi.fn();
 const mockRemoveSuggestion = vi.fn();
 const mockUpdateThreshold = vi.fn();
+const mockMuteUser = vi.fn();
 
 const TRACK_META = {
   id: 'track-1', name: 'Blinding Lights', artists: ['The Weeknd'],
@@ -38,6 +41,7 @@ describe('HostView', () => {
       connect: mockConnect,
       removeSuggestion: mockRemoveSuggestion,
       updateThreshold: mockUpdateThreshold,
+      muteUser: mockMuteUser,
     } as never);
     vi.mocked(useUserStore).mockReturnValue({ userId: 'user-host' } as never);
   });
@@ -112,6 +116,21 @@ describe('HostView', () => {
     expect((slider.element as HTMLInputElement).value).toBe('4');
   });
 
+  it('renders a Close Room button', async () => {
+    const router = buildRouter();
+    await router.push('/host/room-abc');
+    const wrapper = mount(HostView, { global: { plugins: [router] } });
+    expect(wrapper.find('[data-testid="close-room-btn"]').exists()).toBe(true);
+  });
+
+  it('clicking Close Room calls api.delete with the roomId', async () => {
+    const router = buildRouter();
+    await router.push('/host/room-abc');
+    const wrapper = mount(HostView, { global: { plugins: [router] } });
+    await wrapper.find('[data-testid="close-room-btn"]').trigger('click');
+    expect(vi.mocked(api.delete)).toHaveBeenCalledWith('/rooms/room-abc');
+  });
+
   it('changing threshold slider calls updateThreshold', async () => {
     const router = buildRouter();
     await router.push('/host/room-abc');
@@ -121,5 +140,29 @@ describe('HostView', () => {
     await slider.setValue('5');
 
     expect(mockUpdateThreshold).toHaveBeenCalledWith({ roomId: 'room-abc', threshold: 5 });
+  });
+
+  it('renders a mute button per suggestion', async () => {
+    const queue = useQueueStore();
+    queue.addSuggestion({ trackId: 'track-1', trackMeta: TRACK_META, voteCount: 1 });
+
+    const router = buildRouter();
+    await router.push('/host/room-abc');
+    const wrapper = mount(HostView, { global: { plugins: [router] } });
+
+    expect(wrapper.find('[data-testid="mute-btn-track-1"]').exists()).toBe(true);
+  });
+
+  it('clicking mute button calls muteUser with roomId and suggestedBy userId', async () => {
+    const queue = useQueueStore();
+    queue.addSuggestion({ trackId: 'track-1', trackMeta: TRACK_META, voteCount: 1 });
+
+    const router = buildRouter();
+    await router.push('/host/room-abc');
+    const wrapper = mount(HostView, { global: { plugins: [router] } });
+
+    await wrapper.find('[data-testid="mute-btn-track-1"]').trigger('click');
+
+    expect(mockMuteUser).toHaveBeenCalledWith({ roomId: 'room-abc', userId: 'u' });
   });
 });

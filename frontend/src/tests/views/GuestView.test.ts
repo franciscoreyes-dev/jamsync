@@ -5,19 +5,23 @@ import { setActivePinia, createPinia } from 'pinia';
 import { ref } from 'vue';
 
 vi.mock('@/stores/socket', () => ({ useSocketStore: vi.fn() }));
+vi.mock('@/stores/user', () => ({ useUserStore: vi.fn() }));
 vi.mock('@/composables/useSpotifySearch', () => ({ useSpotifySearch: vi.fn() }));
 vi.mock('@/composables/useVoting', () => ({ useVoting: vi.fn() }));
 vi.mock('socket.io-client', () => ({ io: vi.fn() }));
 
 import { useSocketStore } from '@/stores/socket';
+import { useUserStore } from '@/stores/user';
 import { useSpotifySearch } from '@/composables/useSpotifySearch';
 import { useVoting } from '@/composables/useVoting';
 import { useQueueStore } from '@/stores/queue';
+import { useRoomStore } from '@/stores/room';
 import GuestView from '@/views/GuestView.vue';
 
 const mockSuggestTrack = vi.fn();
 const mockVote = vi.fn();
 const mockConnect = vi.fn();
+const mockLeaveRoom = vi.fn();
 
 const TRACK_META = {
   id: 'track-1', name: 'Blinding Lights', artists: ['The Weeknd'],
@@ -42,7 +46,8 @@ describe('GuestView', () => {
     queryRef = ref('');
     resultsRef = ref([]);
 
-    vi.mocked(useSocketStore).mockReturnValue({ suggestTrack: mockSuggestTrack, connect: mockConnect } as never);
+    vi.mocked(useSocketStore).mockReturnValue({ suggestTrack: mockSuggestTrack, connect: mockConnect, leaveRoom: mockLeaveRoom } as never);
+    vi.mocked(useUserStore).mockReturnValue({ userId: 'u' } as never);
     vi.mocked(useSpotifySearch).mockReturnValue({ query: queryRef, results: resultsRef, loading: ref(false) } as never);
     vi.mocked(useVoting).mockReturnValue({ vote: mockVote } as never);
   });
@@ -132,6 +137,29 @@ describe('GuestView', () => {
     expect(wrapper.find('[data-testid="queue-item-track-1"]').text()).toContain('The Weeknd');
   });
 
+  it('renders a leave button in the header', async () => {
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    const wrapper = mount(GuestView, { global: { plugins: [router] } });
+    expect(wrapper.find('[data-testid="leave-btn"]').exists()).toBe(true);
+  });
+
+  it('calls leaveRoom when leave button is clicked', async () => {
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    const wrapper = mount(GuestView, { global: { plugins: [router] } });
+    await wrapper.find('[data-testid="leave-btn"]').trigger('click');
+    expect(mockLeaveRoom).toHaveBeenCalled();
+  });
+
+  it('calls leaveRoom on unmount', async () => {
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    const wrapper = mount(GuestView, { global: { plugins: [router] } });
+    wrapper.unmount();
+    expect(mockLeaveRoom).toHaveBeenCalled();
+  });
+
   it('calls vote when vote button is clicked', async () => {
     const queue = useQueueStore();
     queue.addSuggestion({ trackId: 'track-1', trackMeta: TRACK_META, voteCount: 0 });
@@ -143,5 +171,31 @@ describe('GuestView', () => {
     await wrapper.find('[data-testid="vote-btn-track-1"]').trigger('click');
 
     expect(mockVote).toHaveBeenCalledWith('track-1');
+  });
+
+  it('suggest button is disabled when user has reached maxSuggestions', async () => {
+    resultsRef.value = [TRACK_META];
+    const queue = useQueueStore();
+    queue.addSuggestion({ trackId: 'track-1', trackMeta: TRACK_META, voteCount: 0 });
+    const room = useRoomStore();
+    room.setRoomState({ roomId: 'r', name: 'Jam', status: 'active', voteThreshold: 3, maxSuggestions: 1, queue: [], suggestions: [], participantCount: 0 });
+
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    const wrapper = mount(GuestView, { global: { plugins: [router] } });
+
+    expect(wrapper.find('[data-testid="suggest-btn-track-1"]').attributes('disabled')).toBeDefined();
+  });
+
+  it('suggest button is enabled when user is under maxSuggestions', async () => {
+    resultsRef.value = [TRACK_META];
+    const room = useRoomStore();
+    room.setRoomState({ roomId: 'r', name: 'Jam', status: 'active', voteThreshold: 3, maxSuggestions: 3, queue: [], suggestions: [], participantCount: 0 });
+
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    const wrapper = mount(GuestView, { global: { plugins: [router] } });
+
+    expect(wrapper.find('[data-testid="suggest-btn-track-1"]').attributes('disabled')).toBeUndefined();
   });
 });

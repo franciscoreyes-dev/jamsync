@@ -6,12 +6,19 @@ import JoinView from '@/views/JoinView.vue';
 import GuestView from '@/views/GuestView.vue';
 import AuthErrorView from '@/views/AuthErrorView.vue';
 
+export function requireHostJwt() {
+  if (!localStorage.getItem('jamsync_token')) {
+    return { path: '/auth/error', query: { reason: 'unauthenticated' } };
+  }
+  return true;
+}
+
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', name: 'home', component: HomeView },
     { path: '/host/new', name: 'host-new', component: HostNewView },
-    { path: '/host/:id', name: 'host', component: HostView },
+    { path: '/host/:id', name: 'host', component: HostView, beforeEnter: requireHostJwt },
     { path: '/join/:code', name: 'join', component: JoinView },
     { path: '/room/:code', name: 'guest', component: GuestView },
     { path: '/auth/error', name: 'auth-error', component: AuthErrorView },

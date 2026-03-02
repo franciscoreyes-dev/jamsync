@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useSocketStore } from '@/stores/socket';
 import { useQueueStore } from '@/stores/queue';
@@ -8,6 +8,7 @@ import { useUserStore } from '@/stores/user';
 import { useSpotifySearch } from '@/composables/useSpotifySearch';
 import { useVoting } from '@/composables/useVoting';
 import type { TrackMeta } from '@/types/socket';
+import { AudioLines, Check, LogOut, Music, Plus, ThumbsUp } from 'lucide-vue-next';
 import Button from '@/components/ui/Button.vue';
 import Input from '@/components/ui/Input.vue';
 import Card from '@/components/ui/Card.vue';
@@ -33,9 +34,21 @@ onMounted(() => {
   socket.connect(code, user.userId);
 });
 
+onUnmounted(() => {
+  socket.leaveRoom({ roomId: room.roomId ?? code, userId: user.userId });
+});
+
+function leave() {
+  socket.leaveRoom({ roomId: room.roomId ?? code, userId: user.userId });
+  router.replace('/');
+}
+
 const suggestions = computed(() => Object.entries(queue.suggestions));
 const approvedQueue = computed(() =>
   queue.queue.map((trackId) => ({ trackId, meta: queue.queueMetadata[trackId] ?? null }))
+);
+const userSuggestionCount = computed(() =>
+  suggestions.value.filter(([, entry]) => entry.meta.suggestedBy === user.userId).length
 );
 
 // Track IDs that just got approved (for slide-in animation)
@@ -57,12 +70,17 @@ function voteProgress(voteCount: number): number {
     <!-- Header -->
     <header class="border-b border-zinc-800 px-4 py-3 flex items-center justify-between sticky top-0 bg-zinc-950/90 backdrop-blur z-10">
       <div class="flex items-center gap-2">
-        <span class="text-green-500 text-lg">♫</span>
+        <AudioLines class="w-4 h-4 text-green-500" />
         <span class="font-semibold text-white">{{ room.name ?? 'Jamsync' }}</span>
       </div>
-      <Badge variant="secondary">
-        {{ room.participantCount }} online
-      </Badge>
+      <div class="flex items-center gap-2">
+        <Badge variant="secondary">
+          {{ room.participantCount }} online
+        </Badge>
+        <Button data-testid="leave-btn" size="sm" variant="ghost" class="flex items-center gap-1.5" @click="leave">
+          <LogOut class="w-3.5 h-3.5" />Leave
+        </Button>
+      </div>
     </header>
 
     <div class="flex-1 overflow-y-auto px-4 py-4 space-y-6 max-w-lg mx-auto w-full">
@@ -96,9 +114,11 @@ function voteProgress(voteCount: number): number {
               <Button
                 :data-testid="`suggest-btn-${track.id}`"
                 size="sm"
+                class="flex items-center gap-1"
+                :disabled="room.maxSuggestions > 0 && userSuggestionCount >= room.maxSuggestions || undefined"
                 @click="suggest(track)"
               >
-                Suggest
+                <Plus class="w-3.5 h-3.5" />Suggest
               </Button>
             </CardContent>
           </Card>
@@ -139,7 +159,8 @@ function voteProgress(voteCount: number): number {
                     :disabled="entry.votedByMe || undefined"
                     @click="vote(trackId)"
                   >
-                    {{ entry.votedByMe ? '✓' : '↑' }}
+                    <Check v-if="entry.votedByMe" class="w-3 h-3" />
+                    <ThumbsUp v-else class="w-3 h-3" />
                   </Button>
                 </div>
               </div>
@@ -173,13 +194,13 @@ function voteProgress(voteCount: number): number {
                 class="w-10 h-10 rounded object-cover flex-shrink-0"
               />
               <div class="w-10 h-10 rounded bg-zinc-800 flex items-center justify-center flex-shrink-0 text-zinc-600" v-else>
-                ♪
+                <Music class="w-4 h-4" />
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-white truncate">{{ meta?.name ?? trackId }}</p>
                 <p v-if="meta" class="text-xs text-zinc-500 truncate">{{ meta.artists.join(', ') }}</p>
               </div>
-              <span class="text-green-500 text-xs font-semibold">✓ Queued</span>
+              <span class="text-green-500 text-xs font-semibold flex items-center gap-1"><Check class="w-3.5 h-3.5" />Queued</span>
             </CardContent>
           </Card>
         </TransitionGroup>

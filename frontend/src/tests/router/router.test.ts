@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { router } from '@/router';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { router, requireHostJwt } from '@/router';
 
 describe('router routes', () => {
   it('resolves / to home', () => {
@@ -24,5 +24,23 @@ describe('router routes', () => {
 
   it('resolves /auth/error to auth-error', () => {
     expect(router.resolve('/auth/error').name).toBe('auth-error');
+  });
+});
+
+describe('requireHostJwt guard', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('redirects to /auth/error when no token in localStorage', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
+    const result = requireHostJwt();
+    expect(result).toEqual({ path: '/auth/error', query: { reason: 'unauthenticated' } });
+  });
+
+  it('allows navigation when token is present in localStorage', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockReturnValue('fake-jwt-token');
+    const result = requireHostJwt();
+    expect(result).toBe(true);
   });
 });

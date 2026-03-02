@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { AudioLines } from 'lucide-vue-next';
 import Button from '@/components/ui/Button.vue';
 import Input from '@/components/ui/Input.vue';
 
@@ -20,7 +21,7 @@ function joinByCode() {
     <div class="w-full max-w-sm space-y-8">
       <div class="text-center space-y-2">
         <div class="flex items-center justify-center gap-2 mb-1">
-          <span class="text-green-500 text-3xl leading-none">♫</span>
+          <span class="text-green-500 text-3xl leading-none"><AudioLines /></span>
           <h1 class="text-3xl font-bold text-white tracking-tight">Jamsync</h1>
         </div>
         <p class="text-zinc-500 text-sm">Collaborative playlists · Real-time</p>

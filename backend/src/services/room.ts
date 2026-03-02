@@ -97,7 +97,10 @@ export interface DeleteRoomInput {
 }
 
 export async function deleteRoom(input: DeleteRoomInput): Promise<void> {
-  const { roomId, hostId } = input;
+  const { hostId } = input;
+
+  const resolved = await redis.get(`code:${input.roomId}`);
+  const roomId = resolved ?? input.roomId;
 
   const room = await redis.hgetall(`room:${roomId}`);
   if (!room?.hostId) throw new AppError('ROOM_NOT_FOUND', 404);

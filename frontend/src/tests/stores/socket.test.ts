@@ -3,12 +3,17 @@ import { setActivePinia, createPinia } from 'pinia';
 import type { Socket } from 'socket.io-client';
 
 vi.mock('socket.io-client', () => ({ io: vi.fn() }));
+vi.mock('@/stores/toast', () => ({ useToastStore: vi.fn() }));
 
 import { io } from 'socket.io-client';
 import { useSocketStore } from '@/stores/socket';
 import { useRoomStore } from '@/stores/room';
 import { useQueueStore } from '@/stores/queue';
+import { useToastStore } from '@/stores/toast';
 import type { RoomStatePayload, SuggestionItem } from '@/types/socket';
+
+const mockAddToast = vi.fn();
+vi.mocked(useToastStore).mockReturnValue({ addToast: mockAddToast, toasts: [], removeToast: vi.fn() } as never);
 
 const TRACK_META: SuggestionItem = {
   id: 'track-1', name: 'Song', artists: ['Artist'], album: 'Album',
@@ -185,6 +190,13 @@ describe('emit helpers', () => {
     store.updateThreshold({ roomId: 'room-1', threshold: 5 });
     expect(mockSocket.emit).toHaveBeenCalledWith('update_threshold', { roomId: 'room-1', threshold: 5 });
   });
+
+  it('muteUser emits mute_user with payload', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    store.muteUser({ roomId: 'room-1', userId: 'user-2' });
+    expect(mockSocket.emit).toHaveBeenCalledWith('mute_user', { roomId: 'room-1', userId: 'user-2' });
+  });
 });
 
 describe('room_updated event', () => {
@@ -235,5 +247,37 @@ describe('room_closed event', () => {
     store.connect('JAM-1234', 'user-1');
     capturedHandlers['room_closed']({ roomId: 'room-1' });
     expect(store.roomClosed).toBe(true);
+  });
+});
+
+describe('leaveRoom', () => {
+  it('emits leave_room with roomId and userId', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    store.leaveRoom({ roomId: 'room-1', userId: 'user-1' });
+    expect(mockSocket.emit).toHaveBeenCalledWith('leave_room', { roomId: 'room-1', userId: 'user-1' });
+  });
+});
+
+describe('toast integration', () => {
+  it('track_approved fires a success toast', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    capturedHandlers['track_approved']({ trackId: 'track-1', trackMeta: TRACK_META });
+    expect(mockAddToast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'success' }));
+  });
+
+  it('error event fires an error toast with the error code as message', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    capturedHandlers['error']({ code: 'ALREADY_VOTED' });
+    expect(mockAddToast).toHaveBeenCalledWith({ message: 'ALREADY_VOTED', variant: 'error' });
+  });
+
+  it('user_joined fires an info toast', () => {
+    const store = useSocketStore();
+    store.connect('JAM-1234', 'user-1');
+    capturedHandlers['user_joined']({ userId: 'user-2', participantCount: 3 });
+    expect(mockAddToast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'info' }));
   });
 });
