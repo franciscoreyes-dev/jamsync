@@ -8,6 +8,7 @@ export const roomsRoutes: FastifyPluginAsync = async (fastify) => {
   }>(
     '/',
     {
+      config: { rateLimit: { max: 5, timeWindow: '1 hour' } },
       preHandler: [requireJwt],
       schema: {
         body: {

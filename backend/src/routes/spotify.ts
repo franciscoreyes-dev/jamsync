@@ -5,6 +5,7 @@ export const spotifyRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.get<{ Querystring: { q: string; limit?: number } }>(
     '/search',
     {
+      config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
       schema: {
         querystring: {
           type: 'object',

@@ -6,6 +6,7 @@ import { roomsRoutes } from './routes/rooms';
 import { spotifyRoutes } from './routes/spotify';
 import { setupSocket } from './socket';
 import { AppError } from './errors';
+import { registerRateLimit } from './plugins/rateLimit';
 
 const fastify = Fastify({ logger: true });
 
@@ -26,6 +27,7 @@ async function start() {
     origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   });
+  await registerRateLimit(fastify);
   await fastify.register(authRoutes, { prefix: '/auth' });
   await fastify.register(roomsRoutes, { prefix: '/rooms' });
   await fastify.register(spotifyRoutes, { prefix: '/spotify' });
