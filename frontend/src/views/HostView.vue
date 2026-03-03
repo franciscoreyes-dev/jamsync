@@ -7,7 +7,7 @@ import { useRoomStore } from '@/stores/room';
 import { useQueueStore } from '@/stores/queue';
 import { getHostIdFromJwt } from '@/lib/utils';
 import { api } from '@/lib/api';
-import { Check, Music, Trash2, Volume2, VolumeX, X } from 'lucide-vue-next';
+import { Check, Music, X } from 'lucide-vue-next';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
@@ -15,6 +15,7 @@ import Badge from '@/components/ui/Badge.vue';
 import Slider from '@/components/ui/Slider.vue';
 import QrcodeVue from 'qrcode.vue';
 import RoomHeader from '@/components/room/RoomHeader.vue';
+import SuggestionCard from '@/components/queue/SuggestionCard.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -70,12 +71,6 @@ function unmute(userId: string) {
 function onThresholdChange(event: Event) {
   const threshold = Number((event.target as HTMLInputElement).value);
   socket.updateThreshold({ roomId, threshold });
-}
-
-function voteProgress(voteCount: number): number {
-  const threshold = room.voteThreshold;
-  if (!threshold) return 0;
-  return Math.min((voteCount / threshold) * 100, 100);
 }
 
 async function closeRoom() {
@@ -144,70 +139,17 @@ async function closeRoom() {
       <section v-if="suggestions.length" class="space-y-2">
         <h2 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Suggestions</h2>
         <TransitionGroup name="suggestion-list" tag="div" class="space-y-2">
-          <Card
+          <SuggestionCard
             v-for="[trackId, entry] in suggestions"
             :key="trackId"
-            :data-testid="`suggestion-${trackId}`"
-            class="overflow-hidden"
-            :class="{ 'opacity-50': entry.muted }"
-          >
-            <CardContent class="py-3 space-y-2">
-              <div class="flex items-center gap-3">
-                <img
-                  v-if="entry.meta.albumArt"
-                  :src="entry.meta.albumArt"
-                  :alt="entry.meta.name"
-                  class="w-10 h-10 rounded object-cover flex-shrink-0"
-                />
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-white truncate">{{ entry.meta.name }}</p>
-                  <p class="text-xs text-zinc-500 truncate">{{ entry.meta.artists.join(', ') }}</p>
-                </div>
-                <div class="flex items-center gap-2 flex-shrink-0">
-                  <Badge>
-                    <span :data-testid="`vote-count-${trackId}`">{{ entry.voteCount }}</span>
-                    <span class="opacity-50"> / {{ room.voteThreshold }}</span>
-                  </Badge>
-                  <Button
-                    v-if="!entry.muted"
-                    :data-testid="`mute-btn-${trackId}`"
-                    size="sm"
-                    variant="ghost"
-                    class="flex items-center gap-1"
-                    @click="mute(entry.meta.suggestedBy)"
-                  >
-                    <VolumeX class="w-3.5 h-3.5" />Mute
-                  </Button>
-                  <Button
-                    v-else
-                    :data-testid="`unmute-btn-${trackId}`"
-                    size="sm"
-                    variant="ghost"
-                    class="flex items-center gap-1 opacity-60"
-                    @click="unmute(entry.meta.suggestedBy)"
-                  >
-                    <Volume2 class="w-3.5 h-3.5" />Unmute
-                  </Button>
-                  <Button
-                    :data-testid="`remove-btn-${trackId}`"
-                    size="sm"
-                    variant="destructive"
-                    class="flex items-center gap-1"
-                    @click="remove(trackId)"
-                  >
-                    <Trash2 class="w-3.5 h-3.5" />Remove
-                  </Button>
-                </div>
-              </div>
-              <!-- Vote progress bar -->
-              <div class="h-1 rounded-full bg-zinc-800 overflow-hidden">
-                <div
-                  class="h-full bg-green-500 rounded-full transition-all duration-500 ease-out"
-                  :style="{ width: `${voteProgress(entry.voteCount)}%` }"
-                />
-              </div>
-            </CardContent>
-          </Card>
+            :track-id="trackId"
+            :entry="entry"
+            :threshold="room.voteThreshold"
+            :is-host="true"
+            @remove="remove"
+            @mute="mute"
+            @unmute="unmute"
+          />
         </TransitionGroup>
       </section>
 
