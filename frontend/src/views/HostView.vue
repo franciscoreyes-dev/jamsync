@@ -7,7 +7,7 @@ import { useRoomStore } from '@/stores/room';
 import { useQueueStore } from '@/stores/queue';
 import { getHostIdFromJwt } from '@/lib/utils';
 import { api } from '@/lib/api';
-import { AudioLines, Check, Music, Trash2, VolumeX, X } from 'lucide-vue-next';
+import { AudioLines, Check, Music, Trash2, Volume2, VolumeX, X } from 'lucide-vue-next';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
@@ -60,6 +60,10 @@ function remove(trackId: string) {
 
 function mute(userId: string) {
   socket.muteUser({ roomId, userId });
+}
+
+function unmute(userId: string) {
+  socket.unmuteUser({ roomId, userId });
 }
 
 function onThresholdChange(event: Event) {
@@ -153,6 +157,7 @@ async function closeRoom() {
             :key="trackId"
             :data-testid="`suggestion-${trackId}`"
             class="overflow-hidden"
+            :class="{ 'opacity-50': entry.muted }"
           >
             <CardContent class="py-3 space-y-2">
               <div class="flex items-center gap-3">
@@ -172,6 +177,7 @@ async function closeRoom() {
                     <span class="opacity-50"> / {{ room.voteThreshold }}</span>
                   </Badge>
                   <Button
+                    v-if="!entry.muted"
                     :data-testid="`mute-btn-${trackId}`"
                     size="sm"
                     variant="ghost"
@@ -179,6 +185,16 @@ async function closeRoom() {
                     @click="mute(entry.meta.suggestedBy)"
                   >
                     <VolumeX class="w-3.5 h-3.5" />Mute
+                  </Button>
+                  <Button
+                    v-else
+                    :data-testid="`unmute-btn-${trackId}`"
+                    size="sm"
+                    variant="ghost"
+                    class="flex items-center gap-1 opacity-60"
+                    @click="unmute(entry.meta.suggestedBy)"
+                  >
+                    <Volume2 class="w-3.5 h-3.5" />Unmute
                   </Button>
                   <Button
                     :data-testid="`remove-btn-${trackId}`"

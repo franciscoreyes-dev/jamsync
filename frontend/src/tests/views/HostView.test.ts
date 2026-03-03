@@ -20,6 +20,7 @@ const mockConnect = vi.fn();
 const mockRemoveSuggestion = vi.fn();
 const mockUpdateThreshold = vi.fn();
 const mockMuteUser = vi.fn();
+const mockUnmuteUser = vi.fn();
 
 const TRACK_META = {
   id: 'track-1', name: 'Blinding Lights', artists: ['The Weeknd'],
@@ -42,6 +43,7 @@ describe('HostView', () => {
       removeSuggestion: mockRemoveSuggestion,
       updateThreshold: mockUpdateThreshold,
       muteUser: mockMuteUser,
+      unmuteUser: mockUnmuteUser,
     } as never);
     vi.mocked(useUserStore).mockReturnValue({ userId: 'user-host' } as never);
   });
@@ -164,5 +166,43 @@ describe('HostView', () => {
     await wrapper.find('[data-testid="mute-btn-track-1"]').trigger('click');
 
     expect(mockMuteUser).toHaveBeenCalledWith({ roomId: 'room-abc', userId: 'u' });
+  });
+
+  it('shows Unmute button for muted suggestions and hides Mute button', async () => {
+    const router = buildRouter();
+    await router.push('/host/room-abc');
+    const wrapper = mount(HostView, { global: { plugins: [router] } });
+    const queueStore = useQueueStore();
+    queueStore.suggestions = {
+      'track-muted': {
+        meta: { ...TRACK_META, id: 'track-muted', suggestedBy: 'user-a' },
+        voteCount: 1,
+        votedByMe: false,
+        muted: true,
+      },
+    };
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('[data-testid="unmute-btn-track-muted"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="mute-btn-track-muted"]').exists()).toBe(false);
+  });
+
+  it('calls socket.unmuteUser when Unmute button is clicked', async () => {
+    const router = buildRouter();
+    await router.push('/host/room-abc');
+    const wrapper = mount(HostView, { global: { plugins: [router] } });
+    const queueStore = useQueueStore();
+    queueStore.suggestions = {
+      'track-muted': {
+        meta: { ...TRACK_META, id: 'track-muted', suggestedBy: 'user-a' },
+        voteCount: 1,
+        votedByMe: false,
+        muted: true,
+      },
+    };
+    await wrapper.vm.$nextTick();
+    await wrapper.find('[data-testid="unmute-btn-track-muted"]').trigger('click');
+    expect(mockUnmuteUser).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-a' })
+    );
   });
 });
