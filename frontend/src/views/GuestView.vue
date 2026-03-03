@@ -8,13 +8,14 @@ import { useUserStore } from '@/stores/user';
 import { useSpotifySearch } from '@/composables/useSpotifySearch';
 import { useVoting } from '@/composables/useVoting';
 import type { TrackMeta } from '@/types/socket';
-import { Check, LogOut, Music, Plus } from 'lucide-vue-next';
+import { LogOut, Plus } from 'lucide-vue-next';
 import Button from '@/components/ui/Button.vue';
 import Input from '@/components/ui/Input.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
 import RoomHeader from '@/components/room/RoomHeader.vue';
 import SuggestionCard from '@/components/queue/SuggestionCard.vue';
+import QueueCard from '@/components/queue/QueueCard.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -139,29 +140,12 @@ function suggest(track: TrackMeta) {
       <section v-if="approvedQueue.length" class="space-y-2">
         <h2 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Up Next</h2>
         <TransitionGroup name="queue-slide" tag="div" class="space-y-2">
-          <Card
+          <QueueCard
             v-for="{ trackId, meta } in approvedQueue"
             :key="trackId"
-            :data-testid="`queue-item-${trackId}`"
-            class="overflow-hidden"
-          >
-            <CardContent class="py-3 flex items-center gap-3">
-              <img
-                v-if="meta?.albumArt"
-                :src="meta.albumArt"
-                :alt="meta.name"
-                class="w-10 h-10 rounded object-cover flex-shrink-0"
-              />
-              <div class="w-10 h-10 rounded bg-zinc-800 flex items-center justify-center flex-shrink-0 text-zinc-600" v-else>
-                <Music class="w-4 h-4" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-white truncate">{{ meta?.name ?? trackId }}</p>
-                <p v-if="meta" class="text-xs text-zinc-500 truncate">{{ meta.artists.join(', ') }}</p>
-              </div>
-              <span class="text-green-500 text-xs font-semibold flex items-center gap-1"><Check class="w-3.5 h-3.5" />Queued</span>
-            </CardContent>
-          </Card>
+            :track-id="trackId"
+            :meta="meta"
+          />
         </TransitionGroup>
       </section>
 

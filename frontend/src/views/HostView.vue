@@ -7,15 +7,15 @@ import { useRoomStore } from '@/stores/room';
 import { useQueueStore } from '@/stores/queue';
 import { getHostIdFromJwt } from '@/lib/utils';
 import { api } from '@/lib/api';
-import { Check, Music, X } from 'lucide-vue-next';
+import { X } from 'lucide-vue-next';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
-import Badge from '@/components/ui/Badge.vue';
-import Slider from '@/components/ui/Slider.vue';
 import QrcodeVue from 'qrcode.vue';
 import RoomHeader from '@/components/room/RoomHeader.vue';
 import SuggestionCard from '@/components/queue/SuggestionCard.vue';
+import QueueCard from '@/components/queue/QueueCard.vue';
+import ThresholdSlider from '@/components/host/ThresholdSlider.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -68,11 +68,6 @@ function unmute(userId: string) {
   socket.unmuteUser({ roomId, userId });
 }
 
-function onThresholdChange(event: Event) {
-  const threshold = Number((event.target as HTMLInputElement).value);
-  socket.updateThreshold({ roomId, threshold });
-}
-
 async function closeRoom() {
   await api.delete(`/rooms/${roomId}`);
 }
@@ -115,23 +110,11 @@ async function closeRoom() {
 
       <!-- Threshold control -->
       <Card>
-        <CardContent class="py-4 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-sm font-medium text-white">Vote Threshold</span>
-            <Badge>{{ room.voteThreshold }} votes</Badge>
-          </div>
-          <Slider
+        <CardContent class="py-4">
+          <ThresholdSlider
             :model-value="room.voteThreshold"
-            data-testid="threshold-slider"
-            :min="1"
-            :max="10"
-            :step="1"
-            @change="onThresholdChange"
+            @update:model-value="(v) => socket.updateThreshold({ roomId, threshold: v })"
           />
-          <div class="flex justify-between text-xs text-zinc-600">
-            <span>1</span>
-            <span>10</span>
-          </div>
         </CardContent>
       </Card>
 
@@ -157,29 +140,12 @@ async function closeRoom() {
       <section v-if="approvedQueue.length" class="space-y-2">
         <h2 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Up Next</h2>
         <TransitionGroup name="queue-slide" tag="div" class="space-y-2">
-          <Card
+          <QueueCard
             v-for="{ trackId, meta } in approvedQueue"
             :key="trackId"
-            :data-testid="`queue-item-${trackId}`"
-            class="overflow-hidden"
-          >
-            <CardContent class="py-3 flex items-center gap-3">
-              <img
-                v-if="meta?.albumArt"
-                :src="meta.albumArt"
-                :alt="meta.name"
-                class="w-10 h-10 rounded object-cover flex-shrink-0"
-              />
-              <div class="w-10 h-10 rounded bg-zinc-800 flex items-center justify-center flex-shrink-0 text-zinc-600" v-else>
-                <Music class="w-4 h-4" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-white truncate">{{ meta?.name ?? trackId }}</p>
-                <p v-if="meta" class="text-xs text-zinc-500 truncate">{{ meta.artists.join(', ') }}</p>
-              </div>
-              <span class="text-green-500 text-xs font-semibold"><Check/></span>
-            </CardContent>
-          </Card>
+            :track-id="trackId"
+            :meta="meta"
+          />
         </TransitionGroup>
       </section>
 
