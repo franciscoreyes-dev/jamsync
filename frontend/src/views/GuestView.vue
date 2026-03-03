@@ -8,12 +8,13 @@ import { useUserStore } from '@/stores/user';
 import { useSpotifySearch } from '@/composables/useSpotifySearch';
 import { useVoting } from '@/composables/useVoting';
 import type { TrackMeta } from '@/types/socket';
-import { AudioLines, Check, LogOut, Music, Plus, ThumbsUp } from 'lucide-vue-next';
+import { Check, LogOut, Music, Plus, ThumbsUp } from 'lucide-vue-next';
 import Button from '@/components/ui/Button.vue';
 import Input from '@/components/ui/Input.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
 import Badge from '@/components/ui/Badge.vue';
+import RoomHeader from '@/components/room/RoomHeader.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -71,21 +72,16 @@ function voteProgress(voteCount: number): number {
 
 <template>
   <div class="min-h-screen bg-zinc-950 text-white flex flex-col">
-    <!-- Header -->
-    <header class="border-b border-zinc-800 px-4 py-3 flex items-center justify-between sticky top-0 bg-zinc-950/90 backdrop-blur z-10">
-      <div class="flex items-center gap-2">
-        <AudioLines class="w-4 h-4 text-green-500" />
-        <span class="font-semibold text-white">{{ room.name ?? 'Jamsync' }}</span>
-      </div>
-      <div class="flex items-center gap-2">
-        <Badge variant="secondary">
-          {{ room.participantCount }} online
-        </Badge>
+    <RoomHeader
+      :name="room.name ?? 'Jamsync'"
+      :participant-count="room.participantCount"
+    >
+      <template #actions>
         <Button data-testid="leave-btn" size="sm" variant="ghost" class="flex items-center gap-1.5" @click="leave">
           <LogOut class="w-3.5 h-3.5" />Leave
         </Button>
-      </div>
-    </header>
+      </template>
+    </RoomHeader>
 
     <div class="flex-1 overflow-y-auto px-4 py-4 space-y-6 max-w-lg mx-auto w-full">
 

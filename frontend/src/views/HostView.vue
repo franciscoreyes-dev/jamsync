@@ -7,13 +7,14 @@ import { useRoomStore } from '@/stores/room';
 import { useQueueStore } from '@/stores/queue';
 import { getHostIdFromJwt } from '@/lib/utils';
 import { api } from '@/lib/api';
-import { AudioLines, Check, Music, Trash2, Volume2, VolumeX, X } from 'lucide-vue-next';
+import { Check, Music, Trash2, Volume2, VolumeX, X } from 'lucide-vue-next';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
 import Badge from '@/components/ui/Badge.vue';
 import Slider from '@/components/ui/Slider.vue';
 import QrcodeVue from 'qrcode.vue';
+import RoomHeader from '@/components/room/RoomHeader.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -84,27 +85,18 @@ async function closeRoom() {
 
 <template>
   <div class="min-h-screen bg-zinc-950 text-white flex flex-col">
-    <!-- Header -->
-    <header class="border-b border-zinc-800 px-4 py-3 flex items-center justify-between sticky top-0 bg-zinc-950/90 backdrop-blur z-10">
-      <div class="flex items-center gap-2">
-        <span class="text-green-500 text-lg"><AudioLines /></span>
-        <span class="font-semibold text-white">{{ room.name ?? 'Jamsync' }}</span>
-        <Badge variant="secondary" class="ml-1">Host</Badge>
-      </div>
-      <div class="flex items-center gap-3">
-        <div
-          class="flex items-center gap-1.5 transition-transform"
-          :class="{ 'scale-125': participantPulse }"
-        >
-          <span class="w-2 h-2 rounded-full bg-green-500 inline-block" />
-          <span class="text-zinc-300 text-sm font-medium" data-testid="participant-count">{{ room.participantCount }}</span>
-          <span class="text-zinc-500 text-xs">online</span>
-        </div>
+    <RoomHeader
+      :name="room.name ?? 'Jamsync'"
+      :participant-count="room.participantCount"
+      :pulse="participantPulse"
+      :is-host="true"
+    >
+      <template #actions>
         <Button data-testid="close-room-btn" size="sm" variant="destructive" class="flex items-center gap-1.5" @click="closeRoom">
           <X class="w-3.5 h-3.5" />Close Room
         </Button>
-      </div>
-    </header>
+      </template>
+    </RoomHeader>
 
     <div class="flex-1 overflow-y-auto px-4 py-4 space-y-6 max-w-2xl mx-auto w-full">
 
