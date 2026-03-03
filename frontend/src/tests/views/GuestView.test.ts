@@ -22,6 +22,7 @@ const mockSuggestTrack = vi.fn();
 const mockVote = vi.fn();
 const mockConnect = vi.fn();
 const mockLeaveRoom = vi.fn();
+const mockDisconnect = vi.fn();
 
 const TRACK_META = {
   id: 'track-1', name: 'Blinding Lights', artists: ['The Weeknd'],
@@ -46,7 +47,7 @@ describe('GuestView', () => {
     queryRef = ref('');
     resultsRef = ref([]);
 
-    vi.mocked(useSocketStore).mockReturnValue({ suggestTrack: mockSuggestTrack, connect: mockConnect, leaveRoom: mockLeaveRoom } as never);
+    vi.mocked(useSocketStore).mockReturnValue({ suggestTrack: mockSuggestTrack, connect: mockConnect, leaveRoom: mockLeaveRoom, disconnect: mockDisconnect } as never);
     vi.mocked(useUserStore).mockReturnValue({ userId: 'u' } as never);
     vi.mocked(useSpotifySearch).mockReturnValue({ query: queryRef, results: resultsRef, loading: ref(false) } as never);
     vi.mocked(useVoting).mockReturnValue({ vote: mockVote } as never);
@@ -197,5 +198,28 @@ describe('GuestView', () => {
     const wrapper = mount(GuestView, { global: { plugins: [router] } });
 
     expect(wrapper.find('[data-testid="suggest-btn-track-1"]').attributes('disabled')).toBeUndefined();
+  });
+
+  it('calls socket.disconnect when leave button is clicked', async () => {
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    const wrapper = mount(GuestView, { global: { plugins: [router] } });
+    await wrapper.find('[data-testid="leave-btn"]').trigger('click');
+    expect(mockDisconnect).toHaveBeenCalled();
+  });
+
+  it('does not render suggestions with muted=true', async () => {
+    const queue = useQueueStore();
+    queue.suggestions = {
+      'track-visible': { meta: { ...TRACK_META, id: 'track-visible' }, voteCount: 0, votedByMe: false, muted: false },
+      'track-muted': { meta: { ...TRACK_META, id: 'track-muted' }, voteCount: 0, votedByMe: false, muted: true },
+    };
+
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    const wrapper = mount(GuestView, { global: { plugins: [router] } });
+
+    expect(wrapper.find('[data-testid="suggestion-track-visible"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="suggestion-track-muted"]').exists()).toBe(false);
   });
 });

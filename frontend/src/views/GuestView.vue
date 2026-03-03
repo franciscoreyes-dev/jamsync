@@ -36,14 +36,18 @@ onMounted(() => {
 
 onUnmounted(() => {
   socket.leaveRoom({ roomId: room.roomId ?? code, userId: user.userId });
+  socket.disconnect();
 });
 
 function leave() {
   socket.leaveRoom({ roomId: room.roomId ?? code, userId: user.userId });
+  socket.disconnect();
   router.replace('/');
 }
 
-const suggestions = computed(() => Object.entries(queue.suggestions));
+const suggestions = computed(() =>
+  Object.entries(queue.suggestions).filter(([, entry]) => !entry.muted)
+);
 const approvedQueue = computed(() =>
   queue.queue.map((trackId) => ({ trackId, meta: queue.queueMetadata[trackId] ?? null }))
 );
