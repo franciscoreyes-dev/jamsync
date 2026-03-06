@@ -44,6 +44,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
         await saveHostSession(hostId, {
           hostToken: tokens.accessToken,
           hostRefreshToken: tokens.refreshToken,
+          spotifyId: me.id,
         });
 
         const jwtToken = signJwt({ hostId });

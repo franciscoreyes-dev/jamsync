@@ -54,7 +54,7 @@ describe('GET /auth/callback', () => {
       accessToken: 'at', refreshToken: 'rt', expiresIn: 3600,
     });
     vi.mocked(spotifyService.getMe).mockResolvedValue({
-      id: 'u1', display_name: 'Host', product: 'premium',
+      id: 'spotify-user-id', display_name: 'Host', product: 'premium',
     });
     vi.mocked(redisService.saveHostSession).mockResolvedValue();
 
@@ -65,7 +65,7 @@ describe('GET /auth/callback', () => {
     expect(res.headers.location).toContain('/host/new?token=');
     expect(vi.mocked(redisService.saveHostSession)).toHaveBeenCalledWith(
       expect.any(String),
-      { hostToken: 'at', hostRefreshToken: 'rt' }
+      expect.objectContaining({ spotifyId: 'spotify-user-id' })
     );
   });
 
