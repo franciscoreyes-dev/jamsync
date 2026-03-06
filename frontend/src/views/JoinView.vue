@@ -2,16 +2,12 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '@/lib/api';
-import { useSocketStore } from '@/stores/socket';
-import { useUserStore } from '@/stores/user';
 import Button from '@/components/ui/Button.vue';
 import Card from '@/components/ui/Card.vue';
 import CardContent from '@/components/ui/CardContent.vue';
 
 const route = useRoute();
 const router = useRouter();
-const socket = useSocketStore();
-const user = useUserStore();
 
 const code = route.params.code as string;
 const roomName = ref<string | null>(null);
@@ -27,7 +23,6 @@ onMounted(async () => {
 });
 
 function join() {
-  socket.connect(code, user.userId);
   router.push(`/room/${code}`);
 }
 </script>
