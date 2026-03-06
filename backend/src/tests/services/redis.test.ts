@@ -24,16 +24,16 @@ import { saveHostSession, getHostSession, deleteHostSession } from '../../servic
 describe('saveHostSession', () => {
   it('stores tokens under session:{hostId}', async () => {
     await expect(
-      saveHostSession('host-1', { hostToken: 'at', hostRefreshToken: 'rt' })
+      saveHostSession('host-1', { hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'sp1' })
     ).resolves.not.toThrow();
   });
 });
 
 describe('getHostSession', () => {
   it('returns tokens for an existing session', async () => {
-    await saveHostSession('host-2', { hostToken: 'at2', hostRefreshToken: 'rt2' });
+    await saveHostSession('host-2', { hostToken: 'at2', hostRefreshToken: 'rt2', spotifyId: 'sp2' });
     const session = await getHostSession('host-2');
-    expect(session).toEqual({ hostToken: 'at2', hostRefreshToken: 'rt2' });
+    expect(session).toEqual({ hostToken: 'at2', hostRefreshToken: 'rt2', spotifyId: 'sp2' });
   });
 
   it('returns null when session does not exist', async () => {
@@ -44,7 +44,7 @@ describe('getHostSession', () => {
 
 describe('deleteHostSession', () => {
   it('removes the session', async () => {
-    await saveHostSession('host-3', { hostToken: 'at3', hostRefreshToken: 'rt3' });
+    await saveHostSession('host-3', { hostToken: 'at3', hostRefreshToken: 'rt3', spotifyId: 'sp3' });
     await deleteHostSession('host-3');
     const session = await getHostSession('host-3');
     expect(session).toBeNull();

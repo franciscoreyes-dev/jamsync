@@ -49,7 +49,7 @@ describe('createRoom', () => {
   });
 
   it('returns roomId (UUID) and JAM-XXXX code on success', async () => {
-    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt' });
+    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1' });
     redisMock.hset.mockResolvedValue(1);
     redisMock.expire.mockResolvedValue(1);
     redisMock.set.mockResolvedValue('OK');
@@ -62,7 +62,7 @@ describe('createRoom', () => {
   });
 
   it('stores room hash with all required fields', async () => {
-    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt' });
+    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1' });
     redisMock.hset.mockResolvedValue(1);
     redisMock.expire.mockResolvedValue(1);
     redisMock.set.mockResolvedValue('OK');
@@ -86,7 +86,7 @@ describe('createRoom', () => {
   });
 
   it('stores code:{JAM-XXXX} → roomId mapping with 24h TTL', async () => {
-    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt' });
+    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1' });
     redisMock.hset.mockResolvedValue(1);
     redisMock.expire.mockResolvedValue(1);
     redisMock.set.mockResolvedValue('OK');
@@ -98,7 +98,7 @@ describe('createRoom', () => {
   });
 
   it('deletes session:{hostId} after creating room', async () => {
-    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt' });
+    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1' });
     redisMock.hset.mockResolvedValue(1);
     redisMock.expire.mockResolvedValue(1);
     redisMock.set.mockResolvedValue('OK');
@@ -110,7 +110,7 @@ describe('createRoom', () => {
   });
 
   it('adds roomId to active_rooms SET', async () => {
-    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt' });
+    vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1' });
     redisMock.hset.mockResolvedValue(1);
     redisMock.expire.mockResolvedValue(1);
     redisMock.set.mockResolvedValue('OK');
