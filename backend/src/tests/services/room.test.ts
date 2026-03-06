@@ -50,6 +50,7 @@ describe('createRoom', () => {
 
   it('returns roomId (UUID) and JAM-XXXX code on success', async () => {
     vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1' });
+    redisMock.get.mockResolvedValue(null);
     redisMock.hset.mockResolvedValue(1);
     redisMock.expire.mockResolvedValue(1);
     redisMock.set.mockResolvedValue('OK');
@@ -63,6 +64,7 @@ describe('createRoom', () => {
 
   it('stores room hash with all required fields', async () => {
     vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1' });
+    redisMock.get.mockResolvedValue(null);
     redisMock.hset.mockResolvedValue(1);
     redisMock.expire.mockResolvedValue(1);
     redisMock.set.mockResolvedValue('OK');
@@ -80,6 +82,8 @@ describe('createRoom', () => {
         voteThreshold: '5',
         maxSuggestions: '2',
         status: 'active',
+        code: result.code,
+        spotifyId: 'spotify-user-1',
       })
     );
     expect(redisMock.expire).toHaveBeenCalledWith(`room:${result.roomId}`, 86400);
@@ -87,6 +91,7 @@ describe('createRoom', () => {
 
   it('stores code:{JAM-XXXX} → roomId mapping with 24h TTL', async () => {
     vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1' });
+    redisMock.get.mockResolvedValue(null);
     redisMock.hset.mockResolvedValue(1);
     redisMock.expire.mockResolvedValue(1);
     redisMock.set.mockResolvedValue('OK');
@@ -99,6 +104,7 @@ describe('createRoom', () => {
 
   it('deletes session:{hostId} after creating room', async () => {
     vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1' });
+    redisMock.get.mockResolvedValue(null);
     redisMock.hset.mockResolvedValue(1);
     redisMock.expire.mockResolvedValue(1);
     redisMock.set.mockResolvedValue('OK');
@@ -111,6 +117,7 @@ describe('createRoom', () => {
 
   it('adds roomId to active_rooms SET', async () => {
     vi.mocked(redisModule.getHostSession).mockResolvedValue({ hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1' });
+    redisMock.get.mockResolvedValue(null);
     redisMock.hset.mockResolvedValue(1);
     redisMock.expire.mockResolvedValue(1);
     redisMock.set.mockResolvedValue('OK');
@@ -119,6 +126,36 @@ describe('createRoom', () => {
     const result = await createRoom({ hostId: 'h1', name: 'Test', voteThreshold: 3, maxSuggestions: 3 });
 
     expect(redisMock.sadd).toHaveBeenCalledWith('active_rooms', result.roomId);
+  });
+
+  it('returns existing room when host already has an active room', async () => {
+    vi.mocked(redisModule.getHostSession).mockResolvedValue({
+      hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1'
+    });
+    redisMock.get.mockResolvedValue('existing-room-id');
+    redisMock.hgetall.mockResolvedValue({ status: 'active', code: 'JAM-ABCD', spotifyId: 'spotify-user-1' });
+    vi.mocked(redisModule.deleteHostSession).mockResolvedValue();
+
+    const result = await createRoom({ hostId: 'h1', name: 'New Room', voteThreshold: 3, maxSuggestions: 3 });
+
+    expect(result).toEqual({ roomId: 'existing-room-id', code: 'JAM-ABCD' });
+    expect(redisMock.hset).not.toHaveBeenCalled();
+  });
+
+  it('sets host_room:{spotifyId} key when creating a new room', async () => {
+    vi.mocked(redisModule.getHostSession).mockResolvedValue({
+      hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1'
+    });
+    redisMock.get.mockResolvedValue(null);
+    redisMock.hset.mockResolvedValue(1);
+    redisMock.expire.mockResolvedValue(1);
+    redisMock.set.mockResolvedValue('OK');
+    redisMock.sadd.mockResolvedValue(1);
+    vi.mocked(redisModule.deleteHostSession).mockResolvedValue();
+
+    const result = await createRoom({ hostId: 'h1', name: 'Test', voteThreshold: 3, maxSuggestions: 3 });
+
+    expect(redisMock.set).toHaveBeenCalledWith('host_room:spotify-user-1', result.roomId, 'EX', 86400);
   });
 });
 

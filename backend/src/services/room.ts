@@ -29,6 +29,15 @@ export async function createRoom(input: CreateRoomInput): Promise<CreateRoomResu
   const session = await getHostSession(hostId);
   if (!session) throw new AppError('SESSION_EXPIRED', 401);
 
+  const existingRoomId = await redis.get(`host_room:${session.spotifyId}`);
+  if (existingRoomId) {
+    const existingRoom = await redis.hgetall(`room:${existingRoomId}`);
+    if (existingRoom?.status === 'active') {
+      await deleteHostSession(hostId);
+      return { roomId: existingRoomId, code: existingRoom.code };
+    }
+  }
+
   const roomId = randomUUID();
   const code = generateCode();
 
@@ -40,10 +49,13 @@ export async function createRoom(input: CreateRoomInput): Promise<CreateRoomResu
     voteThreshold: String(voteThreshold),
     maxSuggestions: String(maxSuggestions),
     status: 'active',
+    code,
+    spotifyId: session.spotifyId,
     createdAt: new Date().toISOString(),
   });
   await redis.expire(`room:${roomId}`, 86400);
   await redis.set(`code:${code}`, roomId, 'EX', 86400);
+  await redis.set(`host_room:${session.spotifyId}`, roomId, 'EX', 86400);
   await redis.sadd('active_rooms', roomId);
   await deleteHostSession(hostId);
 
