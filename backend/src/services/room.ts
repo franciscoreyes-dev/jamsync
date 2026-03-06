@@ -121,7 +121,8 @@ export async function deleteRoom(input: DeleteRoomInput): Promise<void> {
 
   await redis.del(
     `room:${roomId}`, `queue:${roomId}`, `suggestions:${roomId}`,
-    `queue_meta:${roomId}`, `users:${roomId}`, `code:${room.code}`
+    `queue_meta:${roomId}`, `users:${roomId}`, `code:${room.code}`,
+    `host_room:${room.spotifyId}`, `history:${roomId}`
   );
   await redis.srem('active_rooms', roomId);
 

@@ -245,7 +245,7 @@ describe('deleteRoom', () => {
   });
 
   it('throws UNAUTHORIZED when hostId does not match', async () => {
-    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD' });
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD', spotifyId: 'spotify-user-1' });
 
     await expect(deleteRoom({ roomId: 'room-1', hostId: 'h2' })).rejects.toMatchObject({
       code: 'UNAUTHORIZED',
@@ -254,7 +254,7 @@ describe('deleteRoom', () => {
   });
 
   it('deletes room keys from Redis and broadcasts room_closed', async () => {
-    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD' });
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD', spotifyId: 'spotify-user-1' });
     redisMock.del.mockResolvedValue(1);
     const ioEmit = vi.fn();
     vi.mocked(ioModule.getIo).mockReturnValue({ to: vi.fn(() => ({ emit: ioEmit })) } as never);
@@ -263,14 +263,15 @@ describe('deleteRoom', () => {
 
     expect(redisMock.del).toHaveBeenCalledWith(
       'room:room-1', 'queue:room-1', 'suggestions:room-1',
-      'queue_meta:room-1', 'users:room-1', 'code:JAM-ABCD'
+      'queue_meta:room-1', 'users:room-1', 'code:JAM-ABCD',
+      'host_room:spotify-user-1', 'history:room-1'
     );
     expect(ioEmit).toHaveBeenCalledWith('room_closed', { roomId: 'room-1' });
   });
 
   it('removes roomId from active_rooms SET on deletion', async () => {
     redisMock.get.mockResolvedValue(null);
-    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD' });
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD', spotifyId: 'spotify-user-1' });
     redisMock.del.mockResolvedValue(1);
     redisMock.srem.mockResolvedValue(1);
     const ioEmit = vi.fn();
@@ -283,7 +284,7 @@ describe('deleteRoom', () => {
 
   it('resolves room code to UUID before deletion', async () => {
     redisMock.get.mockResolvedValue('room-uuid-1');
-    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD' });
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD', spotifyId: 'spotify-user-1' });
     redisMock.del.mockResolvedValue(1);
     const ioEmit = vi.fn();
     vi.mocked(ioModule.getIo).mockReturnValue({ to: vi.fn(() => ({ emit: ioEmit })) } as never);
@@ -294,8 +295,26 @@ describe('deleteRoom', () => {
     expect(redisMock.hgetall).toHaveBeenCalledWith('room:room-uuid-1');
     expect(redisMock.del).toHaveBeenCalledWith(
       'room:room-uuid-1', 'queue:room-uuid-1', 'suggestions:room-uuid-1',
-      'queue_meta:room-uuid-1', 'users:room-uuid-1', 'code:JAM-ABCD'
+      'queue_meta:room-uuid-1', 'users:room-uuid-1', 'code:JAM-ABCD',
+      'host_room:spotify-user-1', 'history:room-uuid-1'
     );
     expect(ioEmit).toHaveBeenCalledWith('room_closed', { roomId: 'room-uuid-1' });
+  });
+
+  it('removes host_room, history, and code keys on deletion', async () => {
+    redisMock.get.mockResolvedValue(null);
+    redisMock.hgetall.mockResolvedValue({ hostId: 'h1', code: 'JAM-ABCD', spotifyId: 'spotify-user-1' });
+    redisMock.del.mockResolvedValue(1);
+    redisMock.srem.mockResolvedValue(1);
+    const ioEmit = vi.fn();
+    vi.mocked(ioModule.getIo).mockReturnValue({ to: vi.fn(() => ({ emit: ioEmit })) } as never);
+
+    await deleteRoom({ roomId: 'room-1', hostId: 'h1' });
+
+    expect(redisMock.del).toHaveBeenCalledWith(
+      'room:room-1', 'queue:room-1', 'suggestions:room-1',
+      'queue_meta:room-1', 'users:room-1', 'code:JAM-ABCD',
+      'host_room:spotify-user-1', 'history:room-1'
+    );
   });
 });
