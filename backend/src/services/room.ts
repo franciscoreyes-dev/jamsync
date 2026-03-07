@@ -116,7 +116,7 @@ export async function deleteRoom(input: DeleteRoomInput): Promise<void> {
   const roomId = resolved ?? input.roomId;
 
   const room = await redis.hgetall(`room:${roomId}`);
-  if (!room?.hostId) throw new AppError('ROOM_NOT_FOUND', 404);
+  if (!room?.hostId || !room.code || !room.spotifyId) throw new AppError('ROOM_NOT_FOUND', 404);
   if (room.hostId !== hostId) throw new AppError('UNAUTHORIZED', 403);
 
   await redis.del(
