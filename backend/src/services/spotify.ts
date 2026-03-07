@@ -126,22 +126,20 @@ export async function getCurrentlyPlaying(
   }
 }
 
-export async function getTrackInfo(spotifyTrackId: string, hostToken: string): Promise<{
-  id: string; name: string; artists: string[]; album: string;
-  albumArt: string; uri: string; durationMs: number;
-} | null> {
+export async function getTrackInfo(spotifyTrackId: string, hostToken: string): Promise<SpotifyTrack | null> {
   try {
     const { data } = await axios.get(`${SPOTIFY_API}/tracks/${spotifyTrackId}`, {
       headers: { Authorization: `Bearer ${hostToken}` },
     });
+    const track = data as RawTrackItem;
     return {
-      id: data.id as string,
-      name: data.name as string,
-      artists: (data.artists as { name: string }[]).map((a) => a.name),
-      album: (data.album as { name: string }).name,
-      albumArt: ((data.album as { images: { url: string }[] }).images?.[0]?.url) ?? '',
-      uri: data.uri as string,
-      durationMs: data.duration_ms as number,
+      id: track.id,
+      name: track.name,
+      artists: track.artists.map((a) => a.name),
+      album: track.album.name,
+      albumArt: track.album.images?.[0]?.url ?? '',
+      uri: track.uri,
+      durationMs: track.duration_ms,
     };
   } catch {
     return null;
