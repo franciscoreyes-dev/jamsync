@@ -32,7 +32,7 @@ export const useQueueStore = defineStore('queue', () => {
     nowPlaying.value = data.nowPlaying ?? null;
     history.value = (data.history ?? []).map((trackId) => ({
       trackId,
-      meta: (data.queueMeta?.[trackId] as TrackMeta) ?? null,
+      meta: data.queueMeta?.[trackId] ?? null,
     }));
   }
 
@@ -74,7 +74,7 @@ export const useQueueStore = defineStore('queue', () => {
   }
 
   function setNowPlaying(payload: NowPlayingUpdatedPayload) {
-    if (!payload.trackId) {
+    if (!payload.trackId || !payload.meta) {
       nowPlaying.value = null;
       return;
     }
