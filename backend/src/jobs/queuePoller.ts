@@ -15,13 +15,16 @@ async function processRoom(roomId: string): Promise<void> {
     const metaJson = await redis.hget(`queue_meta:${roomId}`, trackId);
     if (metaJson) {
       const meta = JSON.parse(metaJson) as { uri: string };
-      if (storedUri === meta.uri && currentUri !== meta.uri) {
+      if (currentUri === meta.uri) {
         await redis.lpop(`queue:${roomId}`);
         await redis.rpush(`history:${roomId}`, trackId);
         await redis.ltrim(`history:${roomId}`, -20, -1);
         await redis.expire(`history:${roomId}`, 86400);
-        const updatedQueue = await redis.lrange(`queue:${roomId}`, 0, -1);
-        getIo()?.to(roomId).emit('queue_updated', { queue: updatedQueue });
+        const [updatedQueue, updatedHistory] = await Promise.all([
+          redis.lrange(`queue:${roomId}`, 0, -1),
+          redis.lrange(`history:${roomId}`, 0, -1),
+        ]);
+        getIo()?.to(roomId).emit('queue_updated', { queue: updatedQueue, history: updatedHistory });
       }
     }
   }

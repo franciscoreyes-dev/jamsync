@@ -75,7 +75,7 @@ function suggest(track: TrackMeta) {
     >
       <template #actions>
         <Button data-testid="leave-btn" size="sm" variant="ghost" class="flex items-center gap-1.5" @click="leave">
-          <LogOut class="w-3.5 h-3.5" />Leave
+          <LogOut class="w-3.5 h-3.5" /><span class="hidden sm:inline">Leave</span>
         </Button>
       </template>
     </RoomHeader>

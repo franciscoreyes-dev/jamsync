@@ -9,8 +9,14 @@ const router = useRouter();
 const code = ref('');
 const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
+function normalizeCode(raw: string): string {
+  const cleaned = raw.trim().toUpperCase().replace(/\s/g, '');
+  if (/^[A-Z0-9]{4}$/.test(cleaned)) return `JAM-${cleaned}`;
+  return cleaned;
+}
+
 function joinByCode() {
-  const normalized = code.value.trim().toUpperCase();
+  const normalized = normalizeCode(code.value);
   if (!normalized) return;
   router.push(`/join/${normalized}`);
 }
@@ -46,7 +52,9 @@ function joinByCode() {
           v-model="code"
           data-testid="code-input"
           placeholder="JAM-XXXX"
+          maxlength="8"
           class="text-center uppercase tracking-widest font-mono"
+          @keyup.enter="joinByCode"
         />
         <Button
           data-testid="join-btn"

@@ -128,18 +128,23 @@ describe('createRoom', () => {
     expect(redisMock.sadd).toHaveBeenCalledWith('active_rooms', result.roomId);
   });
 
-  it('returns existing room when host already has an active room', async () => {
+  it('returns existing room and updates hostId + tokens when host already has an active room', async () => {
     vi.mocked(redisModule.getHostSession).mockResolvedValue({
       hostToken: 'at', hostRefreshToken: 'rt', spotifyId: 'spotify-user-1'
     });
     redisMock.get.mockResolvedValue('existing-room-id');
     redisMock.hgetall.mockResolvedValue({ status: 'active', code: 'JAM-ABCD', spotifyId: 'spotify-user-1' });
+    redisMock.hset.mockResolvedValue(1);
     vi.mocked(redisModule.deleteHostSession).mockResolvedValue();
 
     const result = await createRoom({ hostId: 'h1', name: 'New Room', voteThreshold: 3, maxSuggestions: 3 });
 
     expect(result).toEqual({ roomId: 'existing-room-id', code: 'JAM-ABCD' });
-    expect(redisMock.hset).not.toHaveBeenCalled();
+    expect(redisMock.hset).toHaveBeenCalledWith('room:existing-room-id', {
+      hostId: 'h1',
+      hostToken: 'at',
+      hostRefreshToken: 'rt',
+    });
   });
 
   it('sets host_room:{spotifyId} key when creating a new room', async () => {

@@ -53,6 +53,7 @@ export interface TrackApprovedPayload {
 
 export interface QueueUpdatedPayload {
   queue: string[];
+  history?: string[];
 }
 
 export interface UserJoinedPayload {

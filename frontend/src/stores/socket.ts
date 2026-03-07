@@ -88,7 +88,7 @@ export const useSocketStore = defineStore('socket', () => {
     });
 
     s.on('queue_updated', (data: QueueUpdatedPayload) => {
-      queue.updateQueue(data.queue);
+      queue.updateQueue(data.queue, data.history);
     });
 
     s.on('user_joined', (data: UserJoinedPayload) => {

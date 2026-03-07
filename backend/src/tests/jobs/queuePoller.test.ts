@@ -56,48 +56,33 @@ describe('pollQueues', () => {
     expect(r.rpush).not.toHaveBeenCalled();
   });
 
-  it('does nothing when currently playing URI matches queue[0] (still playing)', async () => {
+  it('pops queue[0] when currentUri matches queue[0]', async () => {
     r.smembers.mockResolvedValue(['room-1']);
     r.hget.mockResolvedValueOnce('host-token');
     vi.mocked(spotifyModule.getCurrentlyPlaying).mockResolvedValue({ uri: 'spotify:track:t1' });
-    r.get.mockResolvedValue('spotify:track:t1');
-    r.lindex.mockResolvedValue('track-1');
-    r.hget.mockResolvedValueOnce(JSON.stringify({ uri: 'spotify:track:t1' }));
-    r.set.mockResolvedValue('OK');
-
-    await pollQueues();
-
-    expect(r.lpop).not.toHaveBeenCalled();
-  });
-
-  it('pops queue[0] and broadcasts queue_updated when track changes away from queue[0]', async () => {
-    r.smembers.mockResolvedValue(['room-1']);
-    r.hget.mockResolvedValueOnce('host-token');
-    vi.mocked(spotifyModule.getCurrentlyPlaying).mockResolvedValue({ uri: 'spotify:track:t2' });
-    r.get.mockResolvedValue('spotify:track:t1');
+    r.get.mockResolvedValue('spotify:track:t1'); // storedUri already t1 — skips now_playing update
     r.lindex.mockResolvedValue('track-1');
     r.hget.mockResolvedValueOnce(JSON.stringify({ uri: 'spotify:track:t1' }));
     r.lpop.mockResolvedValue('track-1');
     r.rpush.mockResolvedValue(1);
     r.ltrim.mockResolvedValue('OK');
     r.expire.mockResolvedValue(1);
-    r.lrange.mockResolvedValue(['track-2']);
-    r.hget.mockResolvedValueOnce(JSON.stringify({ id: 't2', name: 'Next', artists: [], album: '', albumArt: '', uri: 'spotify:track:t2', durationMs: 0 }));
-    r.set.mockResolvedValue('OK');
+    r.lrange.mockResolvedValueOnce([]);          // queue after pop
+    r.lrange.mockResolvedValueOnce(['track-1']); // history after push
     const ioEmit = vi.fn();
     vi.mocked(ioModule.getIo).mockReturnValue({ to: vi.fn(() => ({ emit: ioEmit })) } as never);
 
     await pollQueues();
 
     expect(r.lpop).toHaveBeenCalledWith('queue:room-1');
-    expect(ioEmit).toHaveBeenCalledWith('queue_updated', { queue: ['track-2'] });
+    expect(ioEmit).toHaveBeenCalledWith('queue_updated', { queue: [], history: ['track-1'] });
   });
 
-  it('does not pop when stored now_playing does not match queue[0]', async () => {
+  it('does not pop when currentUri does not match queue[0]', async () => {
     r.smembers.mockResolvedValue(['room-1']);
     r.hget.mockResolvedValueOnce('host-token');
     vi.mocked(spotifyModule.getCurrentlyPlaying).mockResolvedValue({ uri: 'spotify:track:t2' });
-    r.get.mockResolvedValue('spotify:track:different');
+    r.get.mockResolvedValue('spotify:track:t1');
     r.lindex.mockResolvedValue('track-1');
     r.hget.mockResolvedValueOnce(JSON.stringify({ uri: 'spotify:track:t1' }));
     r.hget.mockResolvedValueOnce(JSON.stringify({ id: 't2', name: 'New', artists: [], album: '', albumArt: '', uri: 'spotify:track:t2', durationMs: 0 }));
@@ -113,17 +98,16 @@ describe('pollQueues', () => {
   it('pushes to history and trims when track is popped', async () => {
     r.smembers.mockResolvedValue(['room-1']);
     r.hget.mockResolvedValueOnce('host-token');
-    vi.mocked(spotifyModule.getCurrentlyPlaying).mockResolvedValue({ uri: 'spotify:track:t2' });
-    r.get.mockResolvedValue('spotify:track:t1');
+    vi.mocked(spotifyModule.getCurrentlyPlaying).mockResolvedValue({ uri: 'spotify:track:t1' });
+    r.get.mockResolvedValue('spotify:track:t1'); // storedUri already t1 — skips now_playing update
     r.lindex.mockResolvedValue('track-1');
     r.hget.mockResolvedValueOnce(JSON.stringify({ uri: 'spotify:track:t1' }));
     r.lpop.mockResolvedValue('track-1');
     r.rpush.mockResolvedValue(1);
     r.ltrim.mockResolvedValue('OK');
     r.expire.mockResolvedValue(1);
-    r.lrange.mockResolvedValue(['track-2']);
-    r.hget.mockResolvedValueOnce(JSON.stringify({ id: 't2', name: 'Next', artists: [], album: '', albumArt: '', uri: 'spotify:track:t2', durationMs: 0 }));
-    r.set.mockResolvedValue('OK');
+    r.lrange.mockResolvedValueOnce([]);
+    r.lrange.mockResolvedValueOnce(['track-1']);
     const ioEmit = vi.fn();
     vi.mocked(ioModule.getIo).mockReturnValue({ to: vi.fn(() => ({ emit: ioEmit })) } as never);
 

@@ -33,6 +33,11 @@ export async function createRoom(input: CreateRoomInput): Promise<CreateRoomResu
   if (existingRoomId) {
     const existingRoom = await redis.hgetall(`room:${existingRoomId}`);
     if (existingRoom?.status === 'active') {
+      await redis.hset(`room:${existingRoomId}`, {
+        hostId,
+        hostToken: session.hostToken,
+        hostRefreshToken: session.hostRefreshToken,
+      });
       await deleteHostSession(hostId);
       return { roomId: existingRoomId, code: existingRoom.code };
     }

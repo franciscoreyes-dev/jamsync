@@ -84,7 +84,7 @@ async function closeRoom() {
     >
       <template #actions>
         <Button data-testid="close-room-btn" size="sm" variant="destructive" class="flex items-center gap-1.5" @click="closeRoom">
-          <X class="w-3.5 h-3.5" />Close Room
+          <X class="w-3.5 h-3.5" /><span class="hidden sm:inline">Close Room</span>
         </Button>
       </template>
     </RoomHeader>

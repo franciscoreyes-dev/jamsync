@@ -65,8 +65,14 @@ export const useQueueStore = defineStore('queue', () => {
     delete suggestions.value[trackId];
   }
 
-  function updateQueue(q: string[]) {
+  function updateQueue(q: string[], historyIds?: string[]) {
     queue.value = q;
+    if (historyIds !== undefined) {
+      history.value = historyIds.map((trackId) => ({
+        trackId,
+        meta: queueMetadata.value[trackId] ?? null,
+      }));
+    }
   }
 
   function setQueueMeta(trackId: string, meta: TrackMeta) {
