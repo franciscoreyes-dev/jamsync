@@ -14,6 +14,7 @@ vi.mock('../../services/redis', () => ({
     hdel: vi.fn(),
     rpush: vi.fn(),
     lrange: vi.fn(),
+    get: vi.fn(),
   },
 }));
 
@@ -117,9 +118,13 @@ describe('suggest_track', () => {
     const { io, ioEmit } = makeIo();
 
     r.sismember.mockResolvedValue(0); // not muted
-    r.hget.mockResolvedValue('3'); // maxSuggestions = 3
+    r.hget.mockResolvedValueOnce('3'); // maxSuggestions = 3
     r.hgetall.mockResolvedValue(null); // no existing suggestions
     r.hset.mockResolvedValue(1);
+    r.sadd.mockResolvedValue(1);        // auto-vote SADD
+    r.scard.mockResolvedValue(1);       // voteCount = 1
+    r.hget.mockResolvedValueOnce('3'); // voteThreshold = 3 (threshold > 1)
+    r.lrange.mockResolvedValue([]);
 
     registerHandlers(io, socket);
     const trackMeta = { id: 'track-1', name: 'Song', artists: ['Artist'], album: 'Album', albumArt: '', uri: 'spotify:track:1', durationMs: 200000 };
@@ -143,6 +148,55 @@ describe('suggest_track', () => {
       trackMeta: { id: 't1', uri: 'u', name: 'S', artists: [], album: '', albumArt: '', durationMs: 0 },
     });
     expect(socket._emit).toHaveBeenCalledWith('error', { code: 'USER_MUTED' });
+  });
+
+  it('auto-votes for the suggester and emits suggestion_added with voteCount=1 when threshold > 1', async () => {
+    const socket = makeSocket('room-1', 'user-1');
+    const { io, ioEmit } = makeIo();
+    r.hget.mockResolvedValueOnce('3');  // maxSuggestions
+    r.sismember.mockResolvedValue(0);   // not muted
+    r.hgetall.mockResolvedValue({});    // no existing suggestions
+    r.hset.mockResolvedValue(1);
+    r.sadd.mockResolvedValue(1);        // auto-vote
+    r.scard.mockResolvedValue(1);       // voteCount = 1
+    r.hget.mockResolvedValueOnce('3'); // voteThreshold = 3
+    r.lrange.mockResolvedValue([]);
+    registerHandlers(io, socket);
+
+    await socket._captured['suggest_track']({
+      trackId: 't1',
+      trackMeta: { id: 't1', uri: 'spotify:track:t1', name: 'Song', artists: [], album: '', albumArt: '', durationMs: 0 },
+    });
+
+    expect(r.sadd).toHaveBeenCalledWith('votes:room-1:t1', 'user-1');
+    expect(ioEmit).toHaveBeenCalledWith('suggestion_added', expect.objectContaining({ trackId: 't1', voteCount: 1 }));
+    expect(ioEmit).toHaveBeenCalledWith('vote_updated', expect.objectContaining({ trackId: 't1', voteCount: 1, threshold: 3 }));
+  });
+
+  it('auto-approves immediately and emits track_approved when threshold=1', async () => {
+    const socket = makeSocket('room-1', 'user-1');
+    const { io, ioEmit } = makeIo();
+    r.hget.mockResolvedValueOnce('3');  // maxSuggestions
+    r.sismember.mockResolvedValue(0);
+    r.hgetall.mockResolvedValue({});
+    r.hset.mockResolvedValue(1);
+    r.sadd.mockResolvedValue(1);
+    r.scard.mockResolvedValue(1);
+    r.hget.mockResolvedValueOnce('1'); // voteThreshold = 1
+    r.hdel.mockResolvedValue(1);
+    r.rpush.mockResolvedValue(1);
+    r.lrange.mockResolvedValue(['t1']);
+    vi.mocked(spotifyModule.addToQueue).mockResolvedValue(undefined);
+    registerHandlers(io, socket);
+
+    await socket._captured['suggest_track']({
+      trackId: 't1',
+      trackMeta: { id: 't1', uri: 'spotify:track:t1', name: 'Song', artists: [], album: '', albumArt: '', durationMs: 0 },
+    });
+
+    expect(ioEmit).toHaveBeenCalledWith('track_approved', expect.objectContaining({ trackId: 't1' }));
+    expect(ioEmit).toHaveBeenCalledWith('queue_updated', { queue: ['t1'] });
+    expect(ioEmit).not.toHaveBeenCalledWith('suggestion_added', expect.anything());
   });
 });
 

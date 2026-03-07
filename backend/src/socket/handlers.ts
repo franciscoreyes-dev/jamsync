@@ -114,7 +114,28 @@ export function registerHandlers(io: Server, socket: Socket): void {
 
       const stored = { ...trackMeta, suggestedBy: userId };
       await redis.hset(`suggestions:${roomId}`, trackId, JSON.stringify(stored));
-      io.to(roomId).emit('suggestion_added', { trackId, trackMeta: stored, voteCount: 0 });
+
+      await redis.sadd(`votes:${roomId}:${trackId}`, userId);
+      const voteCount = await redis.scard(`votes:${roomId}:${trackId}`);
+
+      const thresholdStr = await redis.hget(`room:${roomId}`, 'voteThreshold');
+      const threshold = Number(thresholdStr ?? 3);
+
+      if (voteCount >= threshold) {
+        const trackMetaJson = JSON.stringify(stored);
+        await Promise.all([
+          redis.hdel(`suggestions:${roomId}`, trackId),
+          redis.rpush(`queue:${roomId}`, trackId),
+          redis.hset(`queue_meta:${roomId}`, trackId, trackMetaJson),
+        ]);
+        await addToQueueWithRefresh(trackMeta.uri, roomId);
+        const queue = await redis.lrange(`queue:${roomId}`, 0, -1);
+        io.to(roomId).emit('track_approved', { trackId, trackMeta: stored });
+        io.to(roomId).emit('queue_updated', { queue });
+      } else {
+        io.to(roomId).emit('suggestion_added', { trackId, trackMeta: stored, voteCount });
+        io.to(roomId).emit('vote_updated', { trackId, voteCount, threshold });
+      }
     } catch {
       socket.emit('error', { code: 'INTERNAL_ERROR' });
     }
