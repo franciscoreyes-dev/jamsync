@@ -30,6 +30,7 @@ async function processRoom(roomId: string): Promise<void> {
     if (currentUri) {
       await redis.set(`now_playing:${roomId}`, currentUri, 'EX', 86400);
       const npTrackId = currentUri.split(':')[2];
+      if (!npTrackId) return;
       const cachedMetaJson = await redis.hget(`queue_meta:${roomId}`, npTrackId);
       let meta = cachedMetaJson ? JSON.parse(cachedMetaJson) : null;
       if (!meta) {
