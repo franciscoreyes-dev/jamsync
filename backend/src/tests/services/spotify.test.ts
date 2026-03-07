@@ -17,7 +17,7 @@ process.env.SPOTIFY_CLIENT_ID = 'test-client-id';
 process.env.SPOTIFY_CLIENT_SECRET = 'test-client-secret';
 process.env.SPOTIFY_REDIRECT_URI = 'http://localhost:3000/auth/callback';
 
-import { exchangeCode, getMe, refreshHostToken, getAppToken, searchTracks, getCurrentlyPlaying } from '../../services/spotify';
+import { exchangeCode, getMe, refreshHostToken, getAppToken, searchTracks, getCurrentlyPlaying, getTrackInfo } from '../../services/spotify';
 import * as redisModule from '../../services/redis';
 
 const redisMock = redisModule.redis as unknown as {
@@ -154,5 +154,56 @@ describe('searchTracks', () => {
       uri: 'spotify:track:track-1',
       durationMs: 200000,
     });
+  });
+});
+
+describe('getTrackInfo', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns TrackMeta for a valid track', async () => {
+    vi.mocked(axios.get).mockResolvedValue({
+      data: {
+        id: 'track-abc',
+        name: 'Test Song',
+        artists: [{ name: 'Artist A' }, { name: 'Artist B' }],
+        album: { name: 'Album X', images: [{ url: 'https://img.com/art.jpg' }] },
+        uri: 'spotify:track:track-abc',
+        duration_ms: 210000,
+      },
+    });
+
+    const result = await getTrackInfo('track-abc', 'host-token');
+
+    expect(result).toEqual({
+      id: 'track-abc',
+      name: 'Test Song',
+      artists: ['Artist A', 'Artist B'],
+      album: 'Album X',
+      albumArt: 'https://img.com/art.jpg',
+      uri: 'spotify:track:track-abc',
+      durationMs: 210000,
+    });
+    expect(axios.get).toHaveBeenCalledWith(
+      expect.stringContaining('/tracks/track-abc'),
+      expect.objectContaining({ headers: { Authorization: 'Bearer host-token' } })
+    );
+  });
+
+  it('returns result with empty albumArt when album has no images', async () => {
+    vi.mocked(axios.get).mockResolvedValue({
+      data: {
+        id: 't1', name: 'S', artists: [{ name: 'A' }],
+        album: { name: 'Al', images: [] },
+        uri: 'spotify:track:t1', duration_ms: 100,
+      },
+    });
+    const result = await getTrackInfo('t1', 'tok');
+    expect(result?.albumArt).toBe('');
+  });
+
+  it('returns null on error', async () => {
+    vi.mocked(axios.get).mockRejectedValue(new Error('Network error'));
+    const result = await getTrackInfo('bad-id', 'tok');
+    expect(result).toBeNull();
   });
 });
