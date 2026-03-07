@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { nextTick } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { setActivePinia, createPinia } from 'pinia';
@@ -204,5 +205,32 @@ describe('HostView', () => {
     expect(mockUnmuteUser).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-a' })
     );
+  });
+
+  it('renders NowPlayingCard when nowPlaying is set', async () => {
+    const router = buildRouter();
+    await router.push('/host/room-abc');
+    const wrapper = mount(HostView, { global: { plugins: [router] } });
+    const queueStore = useQueueStore();
+    queueStore.nowPlaying = {
+      trackId: 't1',
+      meta: { id: 't1', name: 'Playing Song', artists: ['Artist'], album: 'Al', albumArt: '', uri: 'spotify:track:t1', durationMs: 0 },
+    };
+    await nextTick();
+    expect(wrapper.find('[data-testid="now-playing-card"]').exists()).toBe(true);
+  });
+
+  it('renders history section when history has items', async () => {
+    const router = buildRouter();
+    await router.push('/host/room-abc');
+    const wrapper = mount(HostView, { global: { plugins: [router] } });
+    const queueStore = useQueueStore();
+    queueStore.history = [{
+      trackId: 't1',
+      meta: { id: 't1', name: 'Old Song', artists: ['A'], album: 'Al', albumArt: '', uri: '', durationMs: 0 },
+    }];
+    await nextTick();
+    expect(wrapper.find('[data-testid="history-section"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="queue-item-t1"]').exists()).toBe(true);
   });
 });

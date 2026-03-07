@@ -16,6 +16,7 @@ import CardContent from '@/components/ui/CardContent.vue';
 import RoomHeader from '@/components/room/RoomHeader.vue';
 import SuggestionCard from '@/components/queue/SuggestionCard.vue';
 import QueueCard from '@/components/queue/QueueCard.vue';
+import NowPlayingCard from '@/components/queue/NowPlayingCard.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -80,6 +81,11 @@ function suggest(track: TrackMeta) {
     </RoomHeader>
 
     <div class="flex-1 overflow-y-auto px-4 py-4 space-y-6 max-w-lg mx-auto w-full">
+
+      <NowPlayingCard
+        :track-id="queue.nowPlaying?.trackId ?? null"
+        :meta="queue.nowPlaying?.meta ?? null"
+      />
 
       <!-- Search -->
       <section class="space-y-3">
@@ -147,6 +153,19 @@ function suggest(track: TrackMeta) {
             :meta="meta"
           />
         </TransitionGroup>
+      </section>
+
+      <!-- History -->
+      <section v-if="queue.history.length" class="space-y-2" data-testid="history-section">
+        <h2 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Recently Played</h2>
+        <div class="space-y-2">
+          <QueueCard
+            v-for="{ trackId, meta } in queue.history.slice().reverse()"
+            :key="trackId"
+            :track-id="trackId"
+            :meta="meta"
+          />
+        </div>
       </section>
 
     </div>

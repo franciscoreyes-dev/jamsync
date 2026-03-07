@@ -16,6 +16,7 @@ import RoomHeader from '@/components/room/RoomHeader.vue';
 import SuggestionCard from '@/components/queue/SuggestionCard.vue';
 import QueueCard from '@/components/queue/QueueCard.vue';
 import ThresholdSlider from '@/components/host/ThresholdSlider.vue';
+import NowPlayingCard from '@/components/queue/NowPlayingCard.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -90,6 +91,11 @@ async function closeRoom() {
 
     <div class="flex-1 overflow-y-auto px-4 py-4 space-y-6 max-w-2xl mx-auto w-full">
 
+      <NowPlayingCard
+        :track-id="queue.nowPlaying?.trackId ?? null"
+        :meta="queue.nowPlaying?.meta ?? null"
+      />
+
       <!-- Room info + QR code -->
       <Card>
         <CardContent class="py-4 flex items-center gap-6">
@@ -147,6 +153,19 @@ async function closeRoom() {
             :meta="meta"
           />
         </TransitionGroup>
+      </section>
+
+      <!-- History -->
+      <section v-if="queue.history.length" class="space-y-2" data-testid="history-section">
+        <h2 class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Recently Played</h2>
+        <div class="space-y-2">
+          <QueueCard
+            v-for="{ trackId, meta } in queue.history.slice().reverse()"
+            :key="trackId"
+            :track-id="trackId"
+            :meta="meta"
+          />
+        </div>
       </section>
 
     </div>

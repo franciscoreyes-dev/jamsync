@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { setActivePinia, createPinia } from 'pinia';
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 
 vi.mock('@/stores/socket', () => ({ useSocketStore: vi.fn() }));
 vi.mock('@/stores/user', () => ({ useUserStore: vi.fn() }));
@@ -221,5 +221,32 @@ describe('GuestView', () => {
 
     expect(wrapper.find('[data-testid="suggestion-track-visible"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="suggestion-track-muted"]').exists()).toBe(false);
+  });
+
+  it('renders NowPlayingCard when nowPlaying is set', async () => {
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    const wrapper = mount(GuestView, { global: { plugins: [router] } });
+    const queueStore = useQueueStore();
+    queueStore.nowPlaying = {
+      trackId: 't1',
+      meta: { id: 't1', name: 'Playing Song', artists: ['Artist'], album: 'Al', albumArt: '', uri: 'spotify:track:t1', durationMs: 0 },
+    };
+    await nextTick();
+    expect(wrapper.find('[data-testid="now-playing-card"]').exists()).toBe(true);
+  });
+
+  it('renders history section when history has items', async () => {
+    const router = buildRouter();
+    await router.push('/room/JAM-ABCD');
+    const wrapper = mount(GuestView, { global: { plugins: [router] } });
+    const queueStore = useQueueStore();
+    queueStore.history = [{
+      trackId: 't1',
+      meta: { id: 't1', name: 'Old Song', artists: ['A'], album: 'Al', albumArt: '', uri: '', durationMs: 0 },
+    }];
+    await nextTick();
+    expect(wrapper.find('[data-testid="history-section"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="queue-item-t1"]').exists()).toBe(true);
   });
 });
