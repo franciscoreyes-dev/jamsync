@@ -20,12 +20,14 @@ interface VotePayload {
 }
 
 async function getRoomState(roomId: string) {
-  const [room, queue, suggestionsRaw, queueMetaRaw, mutedUsers] = await Promise.all([
+  const [room, queue, suggestionsRaw, queueMetaRaw, mutedUsers, historyRaw, nowPlayingUri] = await Promise.all([
     redis.hgetall(`room:${roomId}`),
     redis.lrange(`queue:${roomId}`, 0, -1),
     redis.hgetall(`suggestions:${roomId}`),
     redis.hgetall(`queue_meta:${roomId}`),
     redis.smembers(`muted:${roomId}`),
+    redis.lrange(`history:${roomId}`, 0, -1),
+    redis.get(`now_playing:${roomId}`),
   ]);
 
   const muted = new Set(mutedUsers ?? []);
@@ -43,6 +45,15 @@ async function getRoomState(roomId: string) {
     queueMeta[trackId] = JSON.parse(metaJson);
   }
 
+  let nowPlaying: { trackId: string; meta: Record<string, unknown> } | null = null;
+  if (nowPlayingUri) {
+    const npTrackId = nowPlayingUri.split(':')[2];
+    const npMetaJson = queueMetaRaw?.[npTrackId];
+    if (npMetaJson) {
+      nowPlaying = { trackId: npTrackId, meta: JSON.parse(npMetaJson) as Record<string, unknown> };
+    }
+  }
+
   const participantCount = await redis.scard(`users:${roomId}`);
 
   return {
@@ -55,6 +66,8 @@ async function getRoomState(roomId: string) {
     suggestions,
     queueMeta,
     participantCount,
+    history: historyRaw ?? [],
+    nowPlaying,
   };
 }
 

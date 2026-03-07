@@ -78,6 +78,7 @@ describe('join_room', () => {
     r.lrange.mockResolvedValue([]);
     r.smembers.mockResolvedValue([]);
     r.scard.mockResolvedValue(1);
+    r.get.mockResolvedValue(null); // now_playing = null
 
     registerHandlers(io, socket);
     await socket._captured['join_room']();
@@ -86,6 +87,33 @@ describe('join_room', () => {
     expect(socket.join).toHaveBeenCalledWith('room-1');
     expect(socket._emit).toHaveBeenCalledWith('room_state', expect.objectContaining({ name: 'Test Room', queueMeta: {} }));
     expect(socket._toEmit).toHaveBeenCalledWith('user_joined', expect.objectContaining({ userId: 'user-1' }));
+  });
+
+  it('includes nowPlaying and history in room_state payload', async () => {
+    const socket = makeSocket();
+    const { io } = makeIo();
+
+    r.sadd.mockResolvedValue(1);
+    r.hgetall
+      .mockResolvedValueOnce({ name: 'Test', status: 'active', voteThreshold: '3', maxSuggestions: '3' })
+      .mockResolvedValueOnce(null)  // suggestions
+      .mockResolvedValueOnce({      // queue_meta — includes now-playing track
+        't2': JSON.stringify({ id: 't2', name: 'Now Song', artists: ['Art'], album: 'Al', albumArt: '', uri: 'spotify:track:t2', durationMs: 0 }),
+      });
+    r.lrange
+      .mockResolvedValueOnce([])          // queue
+      .mockResolvedValueOnce(['t2']);     // history
+    r.smembers.mockResolvedValue([]);
+    r.scard.mockResolvedValue(1);
+    r.get.mockResolvedValue('spotify:track:t2'); // now_playing URI
+
+    registerHandlers(io, socket);
+    await socket._captured['join_room']();
+
+    expect(socket._emit).toHaveBeenCalledWith('room_state', expect.objectContaining({
+      nowPlaying: expect.objectContaining({ trackId: 't2', meta: expect.objectContaining({ name: 'Now Song' }) }),
+      history: ['t2'],
+    }));
   });
 });
 
