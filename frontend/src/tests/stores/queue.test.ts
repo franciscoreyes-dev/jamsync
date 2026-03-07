@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useQueueStore } from '@/stores/queue';
-import type { RoomStatePayload, SuggestionItem } from '@/types/socket';
+import type { RoomStatePayload, SuggestionItem, TrackMeta } from '@/types/socket';
 
 const TRACK_META: SuggestionItem = {
   id: 'track-1',
@@ -140,5 +140,44 @@ describe('useQueueStore', () => {
     store.setFromRoomState({ ...ROOM_STATE, suggestions: [{ ...TRACK_META, voteCount: 1, muted: true }] } as RoomStatePayload);
     store.unmuteSuggestions([TRACK_META.id]);
     expect(store.suggestions[TRACK_META.id].muted).toBe(false);
+  });
+
+  it('setFromRoomState populates nowPlaying when included in payload', () => {
+    const store = useQueueStore();
+    const meta: TrackMeta = { id: 't1', name: 'Song', artists: ['Art'], album: 'Al', albumArt: '', uri: 'spotify:track:t1', durationMs: 0 };
+    store.setFromRoomState({
+      ...ROOM_STATE,
+      nowPlaying: { trackId: 't1', meta },
+      history: ['t1'],
+      queueMeta: { t1: meta },
+    } as RoomStatePayload);
+
+    expect(store.nowPlaying).toEqual({ trackId: 't1', meta });
+    expect(store.history).toHaveLength(1);
+    expect(store.history[0].trackId).toBe('t1');
+  });
+
+  it('setNowPlaying sets nowPlaying state', () => {
+    const store = useQueueStore();
+    const meta: TrackMeta = { id: 't2', name: 'New', artists: [], album: '', albumArt: '', uri: 'spotify:track:t2', durationMs: 0 };
+    store.setNowPlaying({ trackId: 't2', meta });
+    expect(store.nowPlaying).toEqual({ trackId: 't2', meta });
+  });
+
+  it('setNowPlaying clears nowPlaying on null trackId', () => {
+    const store = useQueueStore();
+    store.setNowPlaying({ trackId: 't1', meta: null });
+    store.setNowPlaying({ trackId: null, meta: null });
+    expect(store.nowPlaying).toBeNull();
+  });
+
+  it('addSuggestion respects votedByMe parameter', () => {
+    const store = useQueueStore();
+    store.addSuggestion(
+      { trackId: 't1', trackMeta: { id: 't1', name: 'S', artists: [], album: '', albumArt: '', uri: '', durationMs: 0, suggestedBy: 'me' }, voteCount: 1 },
+      true
+    );
+    expect(store.suggestions['t1'].votedByMe).toBe(true);
+    expect(store.suggestions['t1'].voteCount).toBe(1);
   });
 });

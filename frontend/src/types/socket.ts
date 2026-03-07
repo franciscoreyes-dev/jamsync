@@ -14,6 +14,11 @@ export interface SuggestionItem extends TrackMeta {
 
 // Server → Client
 
+export interface NowPlayingUpdatedPayload {
+  trackId: string | null;
+  meta: TrackMeta | null;
+}
+
 export interface RoomStatePayload {
   roomId: string;
   code?: string;
@@ -25,6 +30,8 @@ export interface RoomStatePayload {
   suggestions: Array<SuggestionItem & { voteCount: number; muted?: boolean }>;
   queueMeta?: Record<string, TrackMeta>;
   participantCount: number;
+  nowPlaying?: { trackId: string; meta: TrackMeta } | null;
+  history?: string[];
 }
 
 export interface SuggestionAddedPayload {

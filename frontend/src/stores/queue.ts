@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import type { RoomStatePayload, SuggestionAddedPayload, SuggestionItem, TrackMeta } from '@/types/socket';
+import type { NowPlayingUpdatedPayload, RoomStatePayload, SuggestionAddedPayload, SuggestionItem, TrackMeta } from '@/types/socket';
 
 export interface SuggestionEntry {
   meta: SuggestionItem;
@@ -13,6 +13,8 @@ export const useQueueStore = defineStore('queue', () => {
   const queue = ref<string[]>([]);
   const suggestions = ref<Record<string, SuggestionEntry>>({});
   const queueMetadata = ref<Record<string, TrackMeta>>({});
+  const nowPlaying = ref<{ trackId: string; meta: TrackMeta } | null>(null);
+  const history = ref<Array<{ trackId: string; meta: TrackMeta | null }>>([]);
 
   function setFromRoomState(data: RoomStatePayload) {
     queue.value = data.queue;
@@ -27,10 +29,15 @@ export const useQueueStore = defineStore('queue', () => {
         queueMetadata.value[trackId] = meta;
       }
     }
+    nowPlaying.value = data.nowPlaying ?? null;
+    history.value = (data.history ?? []).map((trackId) => ({
+      trackId,
+      meta: (data.queueMeta?.[trackId] as TrackMeta) ?? null,
+    }));
   }
 
-  function addSuggestion({ trackId, trackMeta, voteCount }: SuggestionAddedPayload) {
-    suggestions.value[trackId] = { meta: trackMeta, voteCount, votedByMe: false, muted: false };
+  function addSuggestion({ trackId, trackMeta, voteCount }: SuggestionAddedPayload, votedByMe = false) {
+    suggestions.value[trackId] = { meta: trackMeta, voteCount, votedByMe, muted: false };
   }
 
   function muteSuggestions(trackIds: string[]) {
@@ -66,5 +73,13 @@ export const useQueueStore = defineStore('queue', () => {
     queueMetadata.value[trackId] = meta;
   }
 
-  return { queue, suggestions, queueMetadata, setFromRoomState, addSuggestion, updateVote, approveSuggestion, updateQueue, setQueueMeta, muteSuggestions, unmuteSuggestions };
+  function setNowPlaying(payload: NowPlayingUpdatedPayload) {
+    if (!payload.trackId) {
+      nowPlaying.value = null;
+      return;
+    }
+    nowPlaying.value = { trackId: payload.trackId, meta: payload.meta };
+  }
+
+  return { queue, suggestions, queueMetadata, nowPlaying, history, setFromRoomState, addSuggestion, updateVote, approveSuggestion, updateQueue, setQueueMeta, muteSuggestions, unmuteSuggestions, setNowPlaying };
 });
