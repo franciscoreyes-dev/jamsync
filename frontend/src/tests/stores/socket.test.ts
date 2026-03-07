@@ -310,6 +310,51 @@ describe('user_unmuted event', () => {
   });
 });
 
+describe('suggestion_added', () => {
+  it('sets votedByMe=true when suggestedBy matches current userId', () => {
+    const store = useSocketStore();
+    const queue = useQueueStore();
+    store.connect('JAM-1234', 'user-me');
+    const addStub = vi.spyOn(queue, 'addSuggestion');
+
+    capturedHandlers['suggestion_added']({
+      trackId: 't1',
+      trackMeta: { id: 't1', name: 'S', artists: [], album: '', albumArt: '', uri: '', durationMs: 0, suggestedBy: 'user-me' },
+      voteCount: 1,
+    });
+
+    expect(addStub).toHaveBeenCalledWith(expect.anything(), true);
+  });
+
+  it('sets votedByMe=false when suggestedBy is a different user', () => {
+    const store = useSocketStore();
+    const queue = useQueueStore();
+    store.connect('JAM-1234', 'user-me');
+    const addStub = vi.spyOn(queue, 'addSuggestion');
+
+    capturedHandlers['suggestion_added']({
+      trackId: 't2',
+      trackMeta: { id: 't2', name: 'S', artists: [], album: '', albumArt: '', uri: '', durationMs: 0, suggestedBy: 'user-other' },
+      voteCount: 1,
+    });
+
+    expect(addStub).toHaveBeenCalledWith(expect.anything(), false);
+  });
+});
+
+describe('now_playing_updated event', () => {
+  it('calls queue.setNowPlaying with the payload', () => {
+    const store = useSocketStore();
+    const queue = useQueueStore();
+    store.connect('JAM-1234', 'user-1');
+    const stub = vi.spyOn(queue, 'setNowPlaying');
+
+    capturedHandlers['now_playing_updated']({ trackId: 't1', meta: null });
+
+    expect(stub).toHaveBeenCalledWith({ trackId: 't1', meta: null });
+  });
+});
+
 describe('toast integration', () => {
   it('track_approved fires a success toast', () => {
     const store = useSocketStore();

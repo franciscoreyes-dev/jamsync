@@ -19,6 +19,7 @@ import type {
   UnmuteUserPayload,
   UserMutedPayload,
   UserUnmutedPayload,
+  NowPlayingUpdatedPayload,
 } from '@/types/socket';
 
 export const useSocketStore = defineStore('socket', () => {
@@ -68,7 +69,7 @@ export const useSocketStore = defineStore('socket', () => {
     });
 
     s.on('suggestion_added', (data: SuggestionAddedPayload) => {
-      queue.addSuggestion(data);
+      queue.addSuggestion(data, data.trackMeta.suggestedBy === _lastUserId);
     });
 
     s.on('vote_updated', (data: VoteUpdatedPayload) => {
@@ -105,6 +106,10 @@ export const useSocketStore = defineStore('socket', () => {
 
     s.on('user_unmuted', (data: UserUnmutedPayload) => {
       queue.unmuteSuggestions(data.trackIds);
+    });
+
+    s.on('now_playing_updated', (data: NowPlayingUpdatedPayload) => {
+      queue.setNowPlaying(data);
     });
 
     s.on('room_updated', (data: { voteThreshold?: number }) => {
