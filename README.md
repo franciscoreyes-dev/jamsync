@@ -2,7 +2,7 @@
 
 > Collaborative playlists, in real time. Guests vote on songs — the most-wanted tracks land directly in the host's Spotify queue.
 
-**[Live Demo](https://jamsync.vercel.app)** · **[Backend API](https://jamsync-backend.railway.app)**
+**[Live Demo](https://jamsync-iota.vercel.app)** · **[Backend API](https://jamsync-backend.railway.app)**
 
 ---
 
